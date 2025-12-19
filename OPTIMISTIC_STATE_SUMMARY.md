@@ -202,7 +202,7 @@ All 15 optimistic entities working:
 3. Monitor coordinator logs for any unexpected behavior
 
 ### Long-term (upstream fixes)
-1. **pixoo_ng package**: Add read methods to PixooAsync
+1. **pixooasync package**: Add read methods to PixooAsync
    - `get_current_channel()`
    - `get_timer_config()`
    - `get_alarm_config()`
@@ -211,7 +211,7 @@ All 15 optimistic entities working:
    - `get_noise_meter_state()`
 
 2. **Pixoo HTTP API**: Check if device actually supports reading these values
-   - If yes: Add read methods to pixoo_ng
+   - If yes: Add read methods to pixooasync
    - If no: Optimistic state is the only solution
 
 ## References

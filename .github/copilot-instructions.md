@@ -47,7 +47,7 @@ specs/001-pixoo-integration/
 ├── contracts/               # Service schemas
 │   ├── display-services.md  # Display services (4)
 │   └── media-player-services.md  # Media player services (7)
-├── ENTITY_MAPPING.md        # pixoo_ng to HA entity mapping
+├── ENTITY_MAPPING.md        # pixooasync to HA entity mapping
 └── quickstart.md            # Developer guide
 ```
 
@@ -82,7 +82,7 @@ curl http://192.168.1.100/post  # Test Pixoo device connectivity
 ### Key Patterns
 
 1. **Async-First Architecture**
-   - All device operations use `PixooAsync` from pixoo_ng
+   - All device operations use `PixooAsync` from pixooasync
    - Use `hass.async_add_executor_job()` for CPU-bound operations (Pillow)
    - No blocking operations in event loop
 
@@ -243,7 +243,7 @@ This project follows 7 core principles (see `.specify/memory/constitution.md`):
 
 1. **Async-First Architecture**: All operations use async/await, PixooAsync client
 2. **HA Native Integration**: Config flow, entity registry, device registry, SSDP
-3. **Python Package Dependency**: Uses pixoo_ng exclusively (no direct protocol)
+3. **Python Package Dependency**: Uses pixooasync exclusively (no direct protocol)
 4. **Modern Python Standards**: Python 3.12+, Pydantic v2, type hints
 5. **AI Agent Friendly Code**: Comprehensive docs, clear structure, type safety
 6. **Test-Driven Development**: 35 success criteria, pytest fixtures, 100% coverage goal

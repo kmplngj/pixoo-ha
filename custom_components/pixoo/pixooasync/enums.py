@@ -1,4 +1,4 @@
-"""Type definitions and enums for pixoo-ng."""
+"""Type definitions and enums for pixooasync."""
 
 from enum import IntEnum
 

@@ -2,7 +2,7 @@
 
 **Generated**: 2025-01-14  
 **Device Tested**: Pixoo-64 at 192.168.188.65  
-**Library**: PixooAsync (from pixoo_ng)  
+**Library**: PixooAsync (from pixooasync)  
 **Purpose**: Document read/write capabilities to inform HA integration architecture
 
 ## Executive Summary

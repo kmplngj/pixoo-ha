@@ -5,7 +5,7 @@ This document tracks AI agent involvement in the pixoo-ha Home Assistant integra
 ## Project Overview
 
 **Project**: pixoo-ha - Modern Home Assistant integration for Divoom Pixoo LED displays  
-**Primary Goal**: Create platinum-grade HA integration using modern pixoo_ng Python package  
+**Primary Goal**: Create platinum-grade HA integration using modern pixooasync Python package  
 **Started**: 2025-11-10  
 **Status**: Phase 1 Core Services Complete ✅ Light Entity Fixed ✅
 
@@ -18,7 +18,7 @@ Primary AI assistant used throughout specification and planning:
 **Specification Development**:
 - Created project constitution (v1.0.0) with 7 core principles
 - Generated comprehensive feature specification (001-pixoo-integration)
-- Analyzed pixoo_ng package (105+ methods, 15 Pydantic models, 8 enums)
+- Analyzed pixooasync package (105+ methods, 15 Pydantic models, 8 enums)
 - Enhanced specification with community feedback from HA forums
 - Created detailed entity mapping and technical documentation
 
@@ -26,11 +26,11 @@ Primary AI assistant used throughout specification and planning:
 - Comprehensive specification (687 lines, 12 user stories, 65 functional requirements)
 - Enhancement summary showing all improvements
 - Entity mapping reference for developers
-- Technical foundation section documenting pixoo_ng integration
+- Technical foundation section documenting pixooasync integration
 
 **Research**:
 - Community feedback analysis (HA forums thread with 16k+ views)
-- pixoo_ng package deep dive (client.py, enums.py, models.py)
+- pixooasync package deep dive (client.py, enums.py, models.py)
 - Best practices for HA integration development
 
 ## Timeline
@@ -45,8 +45,8 @@ Primary AI assistant used throughout specification and planning:
 - ✅ Fetched community feedback from HA forums
 - ✅ Enhanced spec with 3 additional user stories (notification system, device config, custom channels)
 
-#### Session 2: pixoo_ng Package Analysis (Afternoon)
-- ✅ Deep analysis of pixoo_ng package structure
+#### Session 2: pixooasync Package Analysis (Afternoon)
+- ✅ Deep analysis of pixooasync package structure
 - ✅ Cataloged 105+ methods across 6 feature categories
 - ✅ Documented 15 Pydantic models for type safety
 - ✅ Identified 8 type-safe enums
@@ -73,7 +73,7 @@ Primary AI assistant used throughout specification and planning:
    - 30 success criteria
    - 22 real-world use cases
    - 25 edge cases
-   - Technical foundation with pixoo_ng integration details
+   - Technical foundation with pixooasync integration details
 
 3. **`specs/001-pixoo-integration/ENHANCEMENT_SUMMARY.md`**
    - Comprehensive changelog of enhancements
@@ -83,7 +83,7 @@ Primary AI assistant used throughout specification and planning:
 
 4. **`specs/001-pixoo-integration/ENTITY_MAPPING.md`**
    - Quick reference for developers
-   - pixoo_ng method to HA entity mapping
+   - pixooasync method to HA entity mapping
    - Pydantic model to entity attribute mapping
    - Implementation patterns and code examples
    - Testing checklist for 105+ methods
@@ -94,7 +94,7 @@ Primary AI assistant used throughout specification and planning:
 
 ### Technical Analysis
 
-**pixoo_ng Package Coverage**:
+**pixooasync Package Coverage**:
 - **Total Methods**: 105+ methods analyzed
   - Device Information: 8 methods
   - Display Control: 12 methods
@@ -205,7 +205,7 @@ ssh homeassistant "export SUPERVISOR_TOKEN='$SUPERVISOR_TOKEN' && ha core logs -
 |-----------|--------|----------|
 | 1. Async-First Architecture | ✅ | FR-024, PixooAsync throughout |
 | 2. HA Native Integration | ✅ | 40+ entities, config flow, diagnostics |
-| 3. Python Package Dependency | ✅ | pixoo_ng v1.0.0+ required |
+| 3. Python Package Dependency | ✅ | pixooasync v1.0.0+ required |
 | 4. Modern Python Standards | ✅ | Python 3.12+, Pydantic v2, type hints |
 | 5. AI Agent Friendly Code | ✅ | Comprehensive docs, clear structure |
 | 6. Test-Driven Development | ✅ | 30 measurable success criteria |
@@ -232,7 +232,7 @@ ssh homeassistant "export SUPERVISOR_TOKEN='$SUPERVISOR_TOKEN' && ha core logs -
 ### Specification Phase
 
 - **Lines Written**: 687 lines (spec) + 450 lines (supporting docs) = 1,137 lines
-- **Methods Analyzed**: 105+ methods from pixoo_ng
+- **Methods Analyzed**: 105+ methods from pixooasync
 - **Models Documented**: 15 Pydantic models
 - **Entities Specified**: 40+ entities
 - **Services Designed**: 25 services
@@ -290,7 +290,7 @@ Traditional specification development for this scope:
    - Coordinator architecture for sensor updates
    - Tool mode state management
 4. **Set up development environment**:
-   - Install pixoo_ng package
+   - Install pixooasync package
    - Configure test devices
    - Set up pytest framework
 5. **Begin implementation**:
@@ -351,7 +351,7 @@ Traditional specification development for this scope:
 - ✅ Generated `data-model.md` (comprehensive entity and coordinator models):
   - 40+ entity definitions across 6 platforms
   - 4 coordinator classes with tiered polling
-  - 15 Pydantic models from pixoo_ng
+  - 15 Pydantic models from pixooasync
   - Config entry data structure
   - Service call queue implementation
   - Entity state transition diagrams
@@ -373,7 +373,7 @@ Traditional specification development for this scope:
   - Project structure (custom_components + tests)
   - Development commands
   - Code style patterns (async, entities, coordinators, services)
-  - Pydantic models from pixoo_ng
+  - Pydantic models from pixooasync
   - Testing patterns with fixtures
   - Constitution principles
   - Entity and service reference
@@ -387,7 +387,7 @@ Traditional specification development for this scope:
 | Topic | Status | Key Decision |
 |-------|--------|--------------|
 | HA Config Flow | ✅ | SSDP discovery via manifest.json with manual fallback |
-| Device Discovery | ✅ | Use HA's SSDP integration (no pixoo_ng discovery) |
+| Device Discovery | ✅ | Use HA's SSDP integration (no pixooasync discovery) |
 | Coordinator Strategy | ✅ | Multiple coordinators (device, system, tool, gallery) |
 | Button Entities | ✅ | ButtonEntity base class with async_press() method |
 | Service Validation | ✅ | voluptuous schemas (HA standard) + optional Pydantic |
@@ -421,7 +421,7 @@ Traditional specification development for this scope:
 
 ### Areas for Improvement
 
-1. **Earlier Package Analysis**: Could have analyzed pixoo_ng before initial spec
+1. **Earlier Package Analysis**: Could have analyzed pixooasync before initial spec
 2. **Entity Modeling**: Could benefit from entity relationship diagram
 3. **Service Contracts**: 21/25 services still need detailed schemas
 4. **Test Strategy**: More specific testing approach per entity type
@@ -430,7 +430,7 @@ Traditional specification development for this scope:
 ## Acknowledgments
 
 - **Original pixoo Package**: SomethingWithComputers/pixoo - Foundation library
-- **pixoo_ng Package**: Modern async rewrite with type safety
+- **pixooasync Package**: Modern async rewrite with type safety
 - **Home Assistant Community**: Real-world use cases and feature requests
 - **GitHub Copilot**: AI-assisted specification, clarification, planning, and documentation
 - **HA Dev Team**: Best practices and quality standards

@@ -52,10 +52,10 @@ pip install homeassistant pytest pytest-homeassistant-custom-component pytest-ai
 
 ```bash
 # Install from PyPI
-uv pip install pixoo-ng
+uv pip install pixooasync
 
 # Or install from local source (if you're developing pixooasync too)
-uv pip install -e ../pixoo-ng
+uv pip install -e ../pixooasync
 ```
 
 ### 4. Set Up Development Configuration

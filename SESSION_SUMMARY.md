@@ -346,7 +346,7 @@ User Experience: 😊 Professional, stable
 - **AI Tools**: GitHub Copilot, DeepWiki, Context7
 - **LaMetric Team**: Excellent integration architecture
 - **HA Core Team**: Comprehensive documentation
-- **pixoo_ng Authors**: Solid async library foundation
+- **pixooasync Authors**: Solid async library foundation
 
 ---
 

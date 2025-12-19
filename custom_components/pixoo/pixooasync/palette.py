@@ -1,4 +1,4 @@
-"""Color palette for pixoo-ng."""
+"""Color palette for pixooasync."""
 
 from typing import Final
 

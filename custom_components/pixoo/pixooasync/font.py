@@ -1,4 +1,4 @@
-"""Font glyphs for pixoo-ng - PICO-8 inspired font."""
+"""Font glyphs for pixooasync - PICO-8 inspired font."""
 
 from typing import Final
 

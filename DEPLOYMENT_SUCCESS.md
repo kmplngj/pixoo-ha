@@ -176,7 +176,7 @@ ssh homeassistant "export SUPERVISOR_TOKEN='$SUPERVISOR_TOKEN' && ha core restar
 
 ### Long-term (Upstream Fixes)
 
-1. **pixoo_ng package enhancements**:
+1. **pixooasync package enhancements**:
    - Add read methods to PixooAsync:
      - `get_current_channel()`
      - `get_timer_config()`
