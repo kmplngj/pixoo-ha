@@ -1,0 +1,124 @@
+================================================================================
+PIXOOASYNC COMPREHENSIVE API TEST (CORRECTED)
+================================================================================
+
+================================================================================
+1. DEVICE INFORMATION & STATUS
+================================================================================
+✅ get_system_config: brightness=21, rotation=0
+✅ get_all_channel_config: brightness=21
+✅ get_current_channel: index=3
+✅ get_time_info: utc=1763319848, local=2025-11-16 20:04:08
+✅ get_weather_info: Cloudy, 6.08°C
+✅ get_animation_list: 0 animations
+✅ find_device_on_lan: found Pixoo64
+
+================================================================================
+2. DISPLAY CONTROL
+================================================================================
+✅ set_brightness(50)
+✅ set_screen_on
+✅ set_screen(on=True)
+✅ set_rotation(NORMAL)
+✅ set_mirror_mode(False)
+✅ set_channel(FACES)
+✅ send_text('API Test')
+✅ clear_text(0)
+
+================================================================================
+3. DRAWING PRIMITIVES (NOT TESTED - require buffer operations)
+================================================================================
+⚠️ Skipping: initialize, push, _send_buffer, draw_pixel, draw_line,
+   draw_rectangle, draw_filled_rectangle, draw_circle, draw_text_at_position
+
+================================================================================
+4. TOOL MODES
+================================================================================
+✅ set_timer(5:30)
+✅ set_alarm(08:30)
+✅ set_stopwatch(enabled=True)
+✅ set_scoreboard(10-15)
+✅ set_noise_meter(enabled=True)
+✅ play_buzzer(500ms on, 500ms off, 1000ms total)
+✅ set_clock(0)
+✅ set_face(0)
+✅ set_visualizer(0)
+✅ set_custom_page(0)
+
+================================================================================
+5. ANIMATION & PLAYLISTS
+================================================================================
+⚠️ play_animation: 1 validation error for PixooResponse
+error_code
+  Input should be a valid integer, unable to parse string as an integer [type=int_parsing, input_value='Request data illegal json', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/int_parsing
+   (Known issue: Device returns 'Request data illegal json')
+⚠️ stop_animation: 1 validation error for PixooResponse
+error_code
+  Input should be a valid integer, unable to parse string as an integer [type=int_parsing, input_value='Request data illegal json', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/int_parsing
+   (Known issue: Device returns 'Request data illegal json')
+⚠️ send_playlist: 1 validation error for PixooResponse
+error_code
+  Input should be a valid integer, unable to parse string as an integer [type=int_parsing, input_value='Request data illegal json', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/int_parsing
+   (Known issue: Device returns 'Request data illegal json')
+
+================================================================================
+6. CONFIGURATION
+================================================================================
+✅ set_white_balance(100, 100, 100)
+❌ set_weather_location: 1 validation error for PixooResponse
+error_code
+  Input should be a valid integer, unable to parse string as an integer [type=int_parsing, input_value='Request data illegal json', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/int_parsing
+✅ set_time(1763319851)
+✅ set_timezone(America/New_York)
+ℹ️ Note: temperature_mode and time_format are set via SystemSettings,
+   not as separate methods in PixooAsync
+
+================================================================================
+TEST RESULTS SUMMARY
+================================================================================
+
+✅ PASSED: 28 methods
+   - get_system_config
+   - get_all_channel_config
+   - get_current_channel
+   - get_time_info
+   - get_weather_info
+   - get_animation_list
+   - find_device_on_lan
+   - set_brightness
+   - set_screen_on
+   - set_screen
+   - set_rotation
+   - set_mirror_mode
+   - set_channel
+   - send_text
+   - clear_text
+   - set_timer
+   - set_alarm
+   - set_stopwatch
+   - set_scoreboard
+   - set_noise_meter
+   - play_buzzer
+   - set_clock
+   - set_face
+   - set_visualizer
+   - set_custom_page
+   - set_white_balance
+   - set_time
+   - set_timezone
+
+❌ FAILED: 4 methods
+   - play_animation
+   - stop_animation
+   - send_playlist
+   - set_weather_location
+
+⚠️ SKIPPED: 5 methods (not testable or drawing primitives)
+
+📊 Success Rate: 87.5% (28/32)
+
+================================================================================

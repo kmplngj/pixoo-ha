@@ -1,0 +1,622 @@
+# Service definitions for Pixoo integration
+
+display_image:
+  name: Display image
+  description: Display an image from a URL or local file path on the Pixoo device.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+  fields:
+    url:
+      name: URL
+      description: URL or local file path to the image. Supports http://, https://, and file:// protocols.
+      required: true
+      example: "https://example.com/image.jpg"
+      selector:
+        text:
+
+display_image_data:
+  name: Display image data
+  description: Display an image directly from base64 encoded data. Perfect for iOS Shortcuts or uploading images from apps.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+  fields:
+    image_data:
+      name: Image Data
+      description: Base64 encoded image data (PNG, JPG, GIF supported). Use this to send images directly without a URL.
+      required: true
+      example: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+      selector:
+        text:
+          multiline: true
+
+display_gif:
+  name: Display GIF
+  description: Display an animated GIF from a URL or local file path on the Pixoo device.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+  fields:
+    url:
+      name: URL
+      description: URL or local file path to the GIF. Supports http://, https://, and file:// protocols.
+      required: true
+      example: "https://example.com/animation.gif"
+      selector:
+        text:
+
+display_text:
+  name: Display text
+  description: Display scrolling text on the Pixoo device.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+  fields:
+    text:
+      name: Text
+      description: Text message to display on the device.
+      required: true
+      example: "Hello, World!"
+      selector:
+        text:
+    color:
+      name: Color
+      description: RGB color for the text as a hex string (e.g., "#FF0000" for red).
+      required: false
+      default: "#FFFFFF"
+      example: "#00FF00"
+      selector:
+        color_rgb:
+    x:
+      name: X Position
+      description: Horizontal position (0-63 pixels).
+      required: false
+      default: 0
+      example: 0
+      selector:
+        number:
+          min: 0
+          max: 63
+          mode: box
+    y:
+      name: Y Position
+      description: Vertical position (0-63 pixels).
+      required: false
+      default: 0
+      example: 48
+      selector:
+        number:
+          min: 0
+          max: 63
+          mode: box
+    font:
+      name: Font Size
+      description: Font size (0-7, where 2 is default).
+      required: false
+      default: 2
+      example: 2
+      selector:
+        number:
+          min: 0
+          max: 7
+          mode: box
+    speed:
+      name: Scroll Speed
+      description: Scroll speed in ms (0-100, higher is slower, 0 is static).
+      required: false
+      default: 0
+      example: 60
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: slider
+    text_id:
+      name: Text ID
+      description: Text identifier (0-19) for multiple text layers.
+      required: false
+      default: 1
+      example: 1
+      selector:
+        number:
+          min: 0
+          max: 19
+          mode: box
+    scroll_direction:
+      name: Scroll direction
+      description: Direction to scroll the text.
+      required: false
+      default: "left"
+      selector:
+        select:
+          options:
+            - "left"
+            - "right"
+
+clear_display:
+  name: Clear display
+  description: Clear the current display and return to the default channel.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+
+play_buzzer:
+  name: Play buzzer
+  description: Play a buzzer alert with configurable timing and count.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+  fields:
+    active_ms:
+      name: Active duration
+      description: Duration the buzzer is active in milliseconds.
+      required: false
+      default: 500
+      example: 1000
+      selector:
+        number:
+          min: 100
+          max: 5000
+          unit_of_measurement: "ms"
+    off_ms:
+      name: Off duration
+      description: Duration the buzzer is off between beeps in milliseconds.
+      required: false
+      default: 500
+      example: 500
+      selector:
+        number:
+          min: 100
+          max: 5000
+          unit_of_measurement: "ms"
+    count:
+      name: Count
+      description: Number of times to repeat the buzzer pattern.
+      required: false
+      default: 1
+      example: 3
+      selector:
+        number:
+          min: 1
+          max: 10
+
+list_animations:
+  name: List animations
+  description: Retrieve the list of available animations (clocks, visualizers) from the device.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+
+set_timer:
+  name: Set timer
+  description: Set a countdown timer with hours and minutes.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+  fields:
+    duration:
+      name: Duration
+      description: Timer duration in HH:MM:SS or MM:SS format (e.g., "05:30" for 5 minutes 30 seconds, or "01:30:00" for 1 hour 30 minutes).
+      required: true
+      example: "05:30"
+      selector:
+        time:
+
+set_alarm:
+  name: Set alarm
+  description: Set an alarm time.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+  fields:
+    time:
+      name: Time
+      description: Alarm time in HH:MM format (24-hour).
+      required: true
+      example: "07:30"
+      selector:
+        time:
+    enabled:
+      name: Enabled
+      description: Whether the alarm is enabled.
+      required: false
+      default: true
+      selector:
+        boolean:
+
+load_image:
+  name: Load image
+  description: Load and display a single image on the Pixoo media player. Optionally set a duration for auto-advance.
+  target:
+    entity:
+      domain: media_player
+      integration: pixoo
+  fields:
+    url:
+      name: Image URL
+      description: URL of the image to display. Supports http://, https://, file://, and media-source:// protocols.
+      required: true
+      example: "https://example.com/image.jpg"
+      selector:
+        text:
+    duration:
+      name: Duration
+      description: Display duration in seconds before auto-advancing (0 = no auto-advance, stays on screen).
+      required: false
+      default: 0
+      example: 10
+      selector:
+        number:
+          min: 0
+          max: 3600
+          unit_of_measurement: "s"
+
+load_folder:
+  name: Load folder
+  description: Load all images from a folder as a slideshow playlist.
+  target:
+    entity:
+      domain: media_player
+      integration: pixoo
+  fields:
+    path:
+      name: Folder path
+      description: Path to the media folder (use media-source:// protocol for Home Assistant media).
+      required: true
+      example: "media-source://media_source/local/images"
+      selector:
+        text:
+    duration:
+      name: Duration per image
+      description: Display duration for each image in seconds.
+      required: false
+      default: 10
+      example: 15
+      selector:
+        number:
+          min: 1
+          max: 300
+          unit_of_measurement: "s"
+    shuffle:
+      name: Shuffle
+      description: Shuffle the order of images in the folder.
+      required: false
+      default: false
+      selector:
+        boolean:
+
+load_playlist:
+  name: Load playlist
+  description: Load a custom playlist of images with individual durations and URLs.
+  target:
+    entity:
+      domain: media_player
+      integration: pixoo
+  fields:
+    items:
+      name: Playlist items
+      description: |
+        List of playlist items with 'url' and optional 'duration' (seconds).
+        Example: [{"url": "https://example.com/img1.jpg", "duration": 10}, {"url": "https://example.com/img2.jpg", "duration": 5}]
+      required: true
+      example: '[{"url": "https://example.com/image.jpg", "duration": 10}]'
+      selector:
+        object:
+    shuffle:
+      name: Shuffle
+      description: Shuffle the playlist order.
+      required: false
+      default: false
+      selector:
+        boolean:
+
+# Drawing Services (Buffer Operations)
+draw_pixel:
+  name: Draw pixel
+  description: Draw a single pixel at the specified coordinates. Must call push_buffer to display.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+  fields:
+    x:
+      name: X coordinate
+      description: X coordinate (0-63 for Pixoo64).
+      required: true
+      example: 32
+      selector:
+        number:
+          min: 0
+          max: 63
+    y:
+      name: Y coordinate
+      description: Y coordinate (0-63 for Pixoo64).
+      required: true
+      example: 32
+      selector:
+        number:
+          min: 0
+          max: 63
+    rgb:
+      name: RGB color
+      description: RGB color as a list of [red, green, blue] values (0-255 each).
+      required: true
+      example: [255, 0, 0]
+      selector:
+        object:
+
+draw_line:
+  name: Draw line
+  description: Draw a line between two points. Must call push_buffer to display.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+  fields:
+    start_x:
+      name: Start X
+      description: Starting X coordinate.
+      required: true
+      example: 10
+      selector:
+        number:
+          min: 0
+          max: 63
+    start_y:
+      name: Start Y
+      description: Starting Y coordinate.
+      required: true
+      example: 10
+      selector:
+        number:
+          min: 0
+          max: 63
+    end_x:
+      name: End X
+      description: Ending X coordinate.
+      required: true
+      example: 54
+      selector:
+        number:
+          min: 0
+          max: 63
+    end_y:
+      name: End Y
+      description: Ending Y coordinate.
+      required: true
+      example: 54
+      selector:
+        number:
+          min: 0
+          max: 63
+    rgb:
+      name: RGB color
+      description: RGB color as a list of [red, green, blue] values (0-255 each).
+      required: true
+      example: [0, 255, 0]
+      selector:
+        object:
+
+draw_rectangle:
+  name: Draw rectangle
+  description: Draw a rectangle (outline or filled). Must call push_buffer to display.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+  fields:
+    top_left_x:
+      name: Top-left X
+      description: Top-left corner X coordinate.
+      required: true
+      example: 10
+      selector:
+        number:
+          min: 0
+          max: 63
+    top_left_y:
+      name: Top-left Y
+      description: Top-left corner Y coordinate.
+      required: true
+      example: 10
+      selector:
+        number:
+          min: 0
+          max: 63
+    bottom_right_x:
+      name: Bottom-right X
+      description: Bottom-right corner X coordinate.
+      required: true
+      example: 54
+      selector:
+        number:
+          min: 0
+          max: 63
+    bottom_right_y:
+      name: Bottom-right Y
+      description: Bottom-right corner Y coordinate.
+      required: true
+      example: 54
+      selector:
+        number:
+          min: 0
+          max: 63
+    rgb:
+      name: RGB color
+      description: RGB color as a list of [red, green, blue] values (0-255 each).
+      required: true
+      example: [0, 0, 255]
+      selector:
+        object:
+    fill:
+      name: Fill
+      description: Whether to fill the rectangle (true) or just draw the outline (false).
+      required: false
+      default: false
+      selector:
+        boolean:
+
+draw_text_at_position:
+  name: Draw text at position
+  description: Draw text at a specific pixel position using PICO-8 font. Must call push_buffer to display.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+  fields:
+    text:
+      name: Text
+      description: Text to draw (supports letters, numbers, and basic symbols).
+      required: true
+      example: "HELLO"
+      selector:
+        text:
+    x:
+      name: X coordinate
+      description: X coordinate for text start position.
+      required: true
+      example: 10
+      selector:
+        number:
+          min: 0
+          max: 63
+    y:
+      name: Y coordinate
+      description: Y coordinate for text start position.
+      required: true
+      example: 28
+      selector:
+        number:
+          min: 0
+          max: 63
+    rgb:
+      name: RGB color
+      description: RGB color as a list of [red, green, blue] values (0-255 each).
+      required: true
+      example: [255, 255, 255]
+      selector:
+        object:
+
+fill_screen:
+  name: Fill screen
+  description: Fill the entire buffer with a solid color. Must call push_buffer to display.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+  fields:
+    rgb:
+      name: RGB color
+      description: RGB color as a list of [red, green, blue] values (0-255 each).
+      required: true
+      example: [255, 0, 0]
+      selector:
+        object:
+
+clear_buffer:
+  name: Clear buffer
+  description: Clear the drawing buffer (fill with black or specified color). Must call push_buffer to display.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+  fields:
+    rgb:
+      name: RGB color
+      description: RGB color to clear to as a list of [red, green, blue] values (0-255 each). Defaults to black [0, 0, 0].
+      required: false
+      default: [0, 0, 0]
+      example: [0, 0, 0]
+      selector:
+        object:
+
+push_buffer:
+  name: Push buffer
+  description: Push the current drawing buffer to the device display. Call this after drawing operations.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+
+play_animation:
+  name: Play animation
+  description: Play a cloud animation by ID on the Pixoo device.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+  fields:
+    pic_id:
+      name: Animation ID
+      description: ID of the cloud animation to play. Use list_animations service to see available IDs.
+      required: true
+      example: 5
+      selector:
+        number:
+          min: 0
+          max: 999999
+
+send_playlist:
+  name: Send playlist
+  description: Send a playlist of items (images, clocks, animations) to display in sequence.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+  fields:
+    items:
+      name: Playlist items
+      description: |
+        List of playlist items. Each item must have 'type' (0=image, 1=text, 2=clock), 'duration' (milliseconds),
+        and type-specific IDs: 'pic_id' for images/animations, 'text_id' for text, 'clock_id' for clocks.
+        Example: [{"type": 0, "duration": 5000, "pic_id": 1}, {"type": 2, "duration": 10000, "clock_id": 285}]
+      required: true
+      example: '[{"type": 0, "duration": 5000, "pic_id": 1}]'
+      selector:
+        object:
+
+set_white_balance:
+  name: Set white balance
+  description: Set white balance / color calibration for the display. Values are 0-255 for each RGB channel.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+  fields:
+    red:
+      name: Red
+      description: Red channel value (0-255).
+      required: true
+      example: 255
+      selector:
+        number:
+          min: 0
+          max: 255
+    green:
+      name: Green
+      description: Green channel value (0-255).
+      required: true
+      example: 200
+      selector:
+        number:
+          min: 0
+          max: 255
+    blue:
+      name: Blue
+      description: Blue channel value (0-255).
+      required: true
+      example: 200
+      selector:
+        number:
+          min: 0
+          max: 255

@@ -1,0 +1,211 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Divoom Pixoo",
+        "description": "Choose how to add your Pixoo device.",
+        "data": {
+          "mode": "Setup Mode"
+        },
+        "data_description": {
+          "mode": "Select 'manual' to enter IP address or 'scan' to search your network"
+        }
+      },
+      "manual": {
+        "title": "Manual Setup",
+        "description": "Enter the IP address of your Pixoo device. You can find this in the Divoom app under Device Settings.",
+        "data": {
+          "device_ip": "Device IP Address",
+          "device_name": "Device Name (optional)"
+        }
+      },
+      "scan": {
+        "title": "Network Scan",
+        "description": "Discovering Pixoo devices via Divoom cloud API (https://app.divoom-gz.com/Device/ReturnSameLANDevice).\n\n{result}",
+        "data": {
+          "choose_ip": "Select Device",
+          "subnet": "Network Subnet (CIDR)",
+          "retry": "Scan Again"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate Pixoo Device",
+        "description": "The device IP address may have changed. Please enter the new IP address.",
+        "data": {
+          "device_ip": "New Device IP Address"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the device. Please check the IP address and ensure the device is powered on.",
+      "unknown": "An unexpected error occurred. Please try again.",
+      "not_found": "No Pixoo devices found on the network. Try a different subnet or use manual setup."
+    },
+    "abort": {
+      "already_configured": "This device is already configured.",
+      "reauth_successful": "Re-authentication was successful."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Pixoo Options",
+        "description": "Configure additional options for your Pixoo device.",
+        "data": {
+          "scan_interval": "Scan Interval (seconds)",
+          "gallery_interval": "Gallery Interval (seconds)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "light": {
+      "pixoo": {
+        "name": "Display"
+      }
+    },
+    "media_player": {
+      "pixoo": {
+        "name": "Image Gallery"
+      }
+    },
+    "select": {
+      "channel": {
+        "name": "Channel",
+        "state": {
+          "faces": "Faces",
+          "cloud": "Cloud",
+          "visualizer": "Visualizer",
+          "custom": "Custom"
+        }
+      },
+      "rotation": {
+        "name": "Screen Rotation",
+        "state": {
+          "normal": "0°",
+          "rotate_90": "90°",
+          "rotate_180": "180°",
+          "rotate_270": "270°"
+        }
+      },
+      "temperature_mode": {
+        "name": "Temperature Unit",
+        "state": {
+          "celsius": "Celsius",
+          "fahrenheit": "Fahrenheit"
+        }
+      },
+      "time_format": {
+        "name": "Time Format",
+        "state": {
+          "12h": "12-hour",
+          "24h": "24-hour"
+        }
+      },
+      "custom_page": {
+        "name": "Custom Page"
+      },
+      "clock_face": {
+        "name": "Clock Face"
+      },
+      "visualizer": {
+        "name": "Visualizer"
+      }
+    },
+    "number": {
+      "brightness": {
+        "name": "Brightness"
+      },
+      "timer_minutes": {
+        "name": "Timer Minutes"
+      },
+      "timer_seconds": {
+        "name": "Timer Seconds"
+      },
+      "alarm_hour": {
+        "name": "Alarm Hour"
+      },
+      "alarm_minute": {
+        "name": "Alarm Minute"
+      },
+      "scoreboard_red": {
+        "name": "Scoreboard Red Score"
+      },
+      "scoreboard_blue": {
+        "name": "Scoreboard Blue Score"
+      },
+      "gallery_interval": {
+        "name": "Gallery Interval"
+      }
+    },
+    "switch": {
+      "timer": {
+        "name": "Timer"
+      },
+      "alarm": {
+        "name": "Alarm"
+      },
+      "stopwatch": {
+        "name": "Stopwatch"
+      },
+      "scoreboard": {
+        "name": "Scoreboard"
+      },
+      "noise_meter": {
+        "name": "Noise Meter"
+      },
+      "mirror_mode": {
+        "name": "Mirror Mode"
+      },
+      "24h_mode": {
+        "name": "24-Hour Mode"
+      }
+    },
+    "sensor": {
+      "device_info": {
+        "name": "Device Info"
+      },
+      "network_status": {
+        "name": "Network Status"
+      },
+      "brightness": {
+        "name": "Brightness"
+      },
+      "temperature": {
+        "name": "Temperature"
+      },
+      "weather": {
+        "name": "Weather"
+      },
+      "time": {
+        "name": "Time"
+      },
+      "channel": {
+        "name": "Current Channel"
+      },
+      "timer_remaining": {
+        "name": "Timer Remaining"
+      },
+      "alarm_next": {
+        "name": "Next Alarm"
+      },
+      "stopwatch_elapsed": {
+        "name": "Stopwatch Elapsed"
+      }
+    },
+    "button": {
+      "dismiss_notification": {
+        "name": "Dismiss Notification"
+      },
+      "buzzer": {
+        "name": "Buzzer"
+      },
+      "reset_buffer": {
+        "name": "Reset Buffer"
+      },
+      "push_buffer": {
+        "name": "Push Buffer"
+      }
+    }
+  }
+}

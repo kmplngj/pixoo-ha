@@ -1,0 +1,12 @@
+{
+  "domain": "pixoo",
+  "name": "Divoom Pixoo",
+  "codeowners": ["@kmplngj"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/kmplngj/pixoo-ha",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/kmplngj/pixoo-ha/issues",
+  "requirements": ["httpx>=0.27.0", "Pillow>=10.0.0", "pydantic>=2.0.0"],
+  "version": "0.1.0"
+}

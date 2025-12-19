@@ -31,7 +31,44 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+**Principle I - Async-First Architecture**:
+- [ ] All I/O operations use async/await
+- [ ] No blocking calls in event loop
+- [ ] Blocking operations wrapped with `hass.async_add_executor_job()`
+
+**Principle II - Home Assistant Native Integration**:
+- [ ] Config flow implemented
+- [ ] Device registry properly used
+- [ ] Entity lifecycle methods implemented
+- [ ] Proper integration manifest
+
+**Principle III - Python Package Dependency**:
+- [ ] Uses official `pixoo` Python package
+- [ ] No direct device protocol implementation
+- [ ] Package version pinned in requirements
+
+**Principle IV - Modern Python Standards**:
+- [ ] Python 3.12+ features used
+- [ ] Type hints present (mypy --strict compliant)
+- [ ] Uses pyproject.toml with modern tooling
+- [ ] Follows ruff formatting standards
+
+**Principle V - AI Agent Friendly Code**:
+- [ ] Clear, descriptive naming
+- [ ] Comprehensive docstrings
+- [ ] Single Responsibility Principle followed
+- [ ] Logical directory structure
+
+**Principle VI - Test-Driven Development**:
+- [ ] Tests written before implementation
+- [ ] Red-Green-Refactor cycle followed
+- [ ] Home Assistant test fixtures used
+
+**Principle VII - Maintainability & Simplicity**:
+- [ ] YAGNI principle applied
+- [ ] DRY principle without premature abstraction
+- [ ] Simple, clear code over clever solutions
+- [ ] Technical debt documented if introduced
 
 ## Project Structure
 

@@ -1,0 +1,128 @@
+🏠 COMPREHENSIVE HA-PIXOO INTEGRATION TEST
+================================================================================
+
+📊 CATEGORY 1: Entity States (40+ entities)
+--------------------------------------------------------------------------------
+Active Entities:
+  ✅ input_number.pixoo_turn_off_wait_time
+  ✅ switch.adaptive_lighting_sleep_mode_pixoo
+  ✅ switch.adaptive_lighting_adapt_color_pixoo
+  ✅ switch.adaptive_lighting_adapt_brightness_pixoo
+  ✅ switch.adaptive_lighting_pixoo
+  ✅ device_tracker.pixoo64
+  ✅ light.pixoo_display
+  ✅ select.pixoo_screen_rotation
+  ✅ select.pixoo_channel
+  ✅ select.pixoo_clock_face
+  ✅ select.pixoo_visualizer
+  ✅ select.pixoo_custom_page
+  ✅ button.pixoo_dismiss_notification
+  ✅ button.pixoo_buzzer
+  ✅ button.pixoo_reset_buffer
+  ✅ button.pixoo_push_buffer
+  ✅ switch.pixoo_mirror_mode
+  ✅ switch.pixoo_timer
+  ✅ switch.pixoo_alarm
+  ✅ switch.pixoo_stopwatch
+  ✅ switch.pixoo_scoreboard
+  ✅ switch.pixoo_noise_meter
+  ✅ number.pixoo_brightness
+  ✅ number.pixoo_timer_minutes
+  ✅ number.pixoo_timer_seconds
+  ✅ number.pixoo_alarm_hour
+  ✅ number.pixoo_alarm_minute
+  ✅ number.pixoo_scoreboard_red_score
+  ✅ number.pixoo_scoreboard_blue_score
+  ✅ sensor.pixoo_pixoo_active_channel_2
+  ✅ sensor.pixoo_pixoo_weather_condition
+  ✅ sensor.pixoo_pixoo_device_time
+  ✅ automation.pixoo64_auto
+  ✅ automation.pixoo64_button_set_custom_channel_pressed
+  ✅ automation.display_title_artist_and_coverart_on_pixoo
+  ✅ automation.reset_pixoo_to_cloud_channel
+
+Total Active Entities: 36
+
+💡 CATEGORY 2: Light Entity
+--------------------------------------------------------------------------------
+Testing light.turn_on...
+  ✅ light.turn_on
+Testing light brightness (50%)...
+  ✅ set brightness
+
+🎛️  CATEGORY 3: Select Entities
+--------------------------------------------------------------------------------
+Testing select.pixoo_channel...
+  ✅ select channel (Cloud)
+Testing select.pixoo_rotation...
+  ✅ select rotation
+  ⚠️  Skipping 5 other selects (clock_face, visualizer, etc.)
+
+🔘 CATEGORY 4: Switch Entities
+--------------------------------------------------------------------------------
+Testing switch.pixoo_mirror_mode...
+  ✅ mirror mode off
+  ⚠️  Skipping 6 other switches (timer, alarm, etc.)
+
+🔢 CATEGORY 5: Number Entities
+--------------------------------------------------------------------------------
+  ⚠️  Skipping all number entities (would change device state)
+
+📡 CATEGORY 6: Sensor Entities
+--------------------------------------------------------------------------------
+  ✅ Active Channel sensor: Custom
+  ✅ Time sensor: 2025-11-16T18:58:37+00:00
+  ✅ Weather sensor: unknown
+
+🔴 CATEGORY 7: Button Entities
+--------------------------------------------------------------------------------
+Testing button.pixoo_buzzer...
+  ✅ buzzer button
+  ⚠️  Skipping 3 other buttons (dismiss, reset_buffer, push_buffer)
+
+🖼️  CATEGORY 8: Display Services
+--------------------------------------------------------------------------------
+Testing pixoo.display_image...
+  ✅ display_image
+Testing pixoo.display_text...
+  ✅ display_text
+Testing pixoo.clear_display...
+  ✅ clear_display
+  ⚠️  Skipping display_gif (requires GIF file)
+
+🎬 CATEGORY 9: Animation Services (Phase 3)
+--------------------------------------------------------------------------------
+Testing pixoo.play_animation...
+  ✅ play_animation
+Testing pixoo.send_playlist...
+  ✅ send_playlist
+Testing pixoo.list_animations...
+  ✅ list_animations
+
+🔧 CATEGORY 10: Tool Services
+--------------------------------------------------------------------------------
+Testing pixoo.set_timer...
+  ✅ set_timer
+Testing pixoo.set_alarm...
+  ✅ set_alarm
+Testing pixoo.play_buzzer...
+  ✅ play_buzzer
+
+⚙️  CATEGORY 11: Configuration Services (Phase 3)
+--------------------------------------------------------------------------------
+Testing pixoo.set_white_balance...
+  ✅ set_white_balance
+
+🎵 CATEGORY 12: Media Player
+--------------------------------------------------------------------------------
+  ⚠️  Skipping media player tests (requires detailed playlist setup)
+
+================================================================================
+TEST SUMMARY
+================================================================================
+✅ PASSED:  20 tests
+❌ FAILED:  0 tests
+⚠️  SKIPPED: 26 tests
+📊 TOTAL:   46 tests
+
+🎉 ALL TESTS PASSED!
