@@ -11,7 +11,7 @@ import pytest
 from homeassistant.const import CONF_HOST, CONF_NAME
 from homeassistant.core import HomeAssistant
 
-from custom_components.pixoo.const import DOMAIN
+from custom_components.pixoo.const import DOMAIN, CONF_DEVICE_SIZE
 
 pytest_plugins = "pytest_homeassistant_custom_component"
 
@@ -76,6 +76,7 @@ def mock_config_entry():
         data={
             CONF_HOST: "192.168.1.100",
             CONF_NAME: "Test Pixoo",
+            CONF_DEVICE_SIZE: 64,
         },
         entry_id="test_entry_id",
         unique_id="AA:BB:CC:DD:EE:FF",

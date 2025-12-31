@@ -29,9 +29,8 @@ async def async_setup_entry(
     coordinators = data["coordinators"]
     coordinator = coordinators["system"]
     pixoo = data["pixoo"]
-    device_name = entry.data.get(CONF_NAME, "Pixoo")
     
-    async_add_entities([PixooLight(coordinator, pixoo, entry.entry_id, device_name)])
+    async_add_entities([PixooLight(coordinator, pixoo, entry)])
 
 
 class PixooLight(PixooEntity, LightEntity):
@@ -45,11 +44,10 @@ class PixooLight(PixooEntity, LightEntity):
         self,
         coordinator: PixooSystemCoordinator,
         pixoo,
-        entry_id: str,
-        device_name: str,
+        entry: ConfigEntry,
     ) -> None:
         """Initialize the light entity."""
-        super().__init__(coordinator, entry_id, device_name)
+        super().__init__(coordinator, entry)
         self._pixoo = pixoo
         self._attr_name = "Display"
 

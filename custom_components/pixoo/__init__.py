@@ -23,6 +23,7 @@ from homeassistant.helpers import entity_registry as er
 
 from .const import (
     DOMAIN,
+    CONF_DEVICE_SIZE,
     SERVICE_DISPLAY_IMAGE,
     SERVICE_DISPLAY_IMAGE_DATA,
     SERVICE_DISPLAY_GIF,
@@ -135,9 +136,10 @@ class ServiceQueue:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Pixoo from a config entry."""
     host = entry.data[CONF_HOST]
+    device_size = entry.data.get(CONF_DEVICE_SIZE, 64)  # Default to 64 for backward compatibility
 
-    # Create Pixoo client
-    pixoo = PixooAsync(host)
+    # Create Pixoo client with correct device size
+    pixoo = PixooAsync(host, size=device_size)
 
     # Initialize the client (creates httpx.AsyncClient without blocking)
     await pixoo.initialize()
@@ -191,12 +193,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         url = call.data["url"]
         entity_ids = call.data.get("entity_id")
 
-        # Download image
-        try:
-            image_data = await download_image(hass, url)
-        except Exception as err:
-            raise ServiceValidationError(f"Failed to download image: {err}") from err
-
         # Get target devices (fixed entity ID resolution)
         entries = _resolve_entry_ids(hass, entity_ids)
 
@@ -205,9 +201,12 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             data = hass.data[DOMAIN][entry.entry_id]
             pixoo: PixooAsync = data["pixoo"]
             service_queue: ServiceQueue = data["service_queue"]
+            device_size = entry.data.get(CONF_DEVICE_SIZE, 64)
 
             async def _execute():
                 try:
+                    # Download image with correct device size
+                    image_data = await download_image(hass, url, target_size=(device_size, device_size))
                     # Convert bytes to PIL Image, draw to buffer, then push
                     image = Image.open(BytesIO(image_data))
                     pixoo.draw_image(image, xy=(0, 0))
@@ -319,6 +318,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         for entry in entries:
             data = hass.data[DOMAIN][entry.entry_id]
             pixoo: PixooAsync = data["pixoo"]
+            device_size = entry.data.get(CONF_DEVICE_SIZE, 64)
 
             try:
                 # Use all configurable parameters for media player automation support
@@ -328,7 +328,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     color=(r, g, b),
                     identifier=text_id,
                     font=font,
-                    width=64,
+                    width=device_size,
                     movement_speed=speed,
                     direction=direction,
                 )
