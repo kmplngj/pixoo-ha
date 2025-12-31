@@ -1,14 +1,15 @@
 # pixoo-ha Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2025-11-10
+Auto-generated from all feature plans. Last updated: 2025-12-31
 
 ## Active Technologies
 
 - Python 3.12+ (001-pixoo-integration)
 - Home Assistant Core 2024.1+
-- pixooasync v1.0.0+ (async Pixoo device client, import as `from pixooasync import PixooAsync`)
+- pixooasync (embedded async Pixoo device client in `custom_components/pixoo/pixooasync/`, import as `from .pixooasync import PixooAsync`)
 - Pydantic v2.0+ (data validation)
-- aiohttp 3.9+ (async HTTP client)
+- httpx 0.27.0+ (async HTTP client for device communication)
+- aiohttp (for image downloads in utils.py)
 - Pillow 10.0+ (image processing)
 
 ## Project Structure
@@ -28,9 +29,19 @@ custom_components/pixoo/
 ├── select.py                # Select entities (7 entities)
 ├── sensor.py                # Sensor entities (10 entities)
 ├── button.py                # Button entities (4 entities)
+├── notify.py                # Notification platform
+├── utils.py                 # Utility functions (image download, processing)
 ├── services.yaml            # Service definitions (25 services)
 ├── strings.json             # UI strings and translations
-└── translations/            # Localization files
+├── translations/            # Localization files
+└── pixooasync/              # Embedded Pixoo client library
+    ├── __init__.py
+    ├── client.py            # PixooAsync main client
+    ├── models.py            # Pydantic data models
+    ├── enums.py             # Type-safe enums
+    ├── discovery.py         # SSDP discovery
+    ├── simulator.py         # Device simulator for testing
+    └── utils.py             # Helper utilities
 
 tests/
 ├── conftest.py              # Test fixtures (hass, config_entry, mock_pixoo)
@@ -68,11 +79,15 @@ ruff check custom_components/pixoo/ --fix
 ruff format custom_components/pixoo/
 mypy custom_components/pixoo/ --strict
 
-# Start HA dev server
+# Start HA dev server (requires config directory)
 hass -c config --debug
 
 # Manual testing
 curl http://192.168.1.100/post  # Test Pixoo device connectivity
+
+# SSDP discovery testing
+# Device announces itself as manufacturer: "Divoom"
+# Use this for testing automatic discovery
 ```
 
 ## Code Style
@@ -157,12 +172,12 @@ curl http://192.168.1.100/post  # Test Pixoo device connectivity
        )
    ```
 
-### Pydantic Models (from pixooasync)
+### Pydantic Models (from embedded pixooasync)
 
 Use these models directly for type safety:
 
 ```python
-from pixooasync.models import (
+from .pixooasync.models import (
     DeviceInfo,           # IP, MAC, model, firmware
     NetworkStatus,        # SSID, signal strength
     SystemConfig,         # Brightness, rotation, mirror
@@ -175,7 +190,7 @@ from pixooasync.models import (
     NoiseMeterConfig,     # Sensitivity
 )
 
-from pixooasync.enums import (
+from .pixooasync.enums import (
     Channel,              # CLOCK, CLOUD, VISUALIZER, etc.
     Rotation,             # NORMAL, ROTATE_90, ROTATE_180, ROTATE_270
     TemperatureMode,      # CELSIUS, FAHRENHEIT
@@ -233,17 +248,18 @@ async def test_display_image_service(hass, config_entry, mock_pixoo):
 
 ## Recent Changes
 
-- 001-pixoo-integration: Added Python 3.12+, Home Assistant integration, pixooasync package
+- 001-pixoo-integration: Added Python 3.12+, Home Assistant integration, embedded pixooasync library
 - Media player enhancement: Added image gallery/slideshow entity (User Story 13)
-- Package rename: Renamed from `pixoo` to `pixooasync` for clarity
+- Architecture: pixooasync embedded in custom_components/pixoo/ (not external PyPI package)
+- Dependencies: httpx for device communication, aiohttp for image downloads, Pillow for processing
 
 ## Constitution Principles
 
 This project follows 7 core principles (see `.specify/memory/constitution.md`):
 
-1. **Async-First Architecture**: All operations use async/await, PixooAsync client
+1. **Async-First Architecture**: All operations use async/await, embedded PixooAsync client
 2. **HA Native Integration**: Config flow, entity registry, device registry, SSDP
-3. **Python Package Dependency**: Uses pixooasync exclusively (no direct protocol)
+3. **Python Package Dependency**: Uses embedded pixooasync library (in custom_components/pixoo/pixooasync/)
 4. **Modern Python Standards**: Python 3.12+, Pydantic v2, type hints
 5. **AI Agent Friendly Code**: Comprehensive docs, clear structure, type safety
 6. **Test-Driven Development**: 35 success criteria, pytest fixtures, 100% coverage goal
@@ -285,6 +301,85 @@ Standard HA media_player services with custom implementation:
 - **media_previous_track**: Display previous image
 - **shuffle_set**: Enable/disable shuffle mode
 - **repeat_set**: Enable/disable repeat mode
+
+## Troubleshooting & Common Pitfalls
+
+### Common Issues
+
+1. **Import Errors with pixooasync**
+   - ❌ Wrong: `from pixooasync import PixooAsync`
+   - ✅ Correct: `from .pixooasync import PixooAsync`
+   - The library is embedded in `custom_components/pixoo/pixooasync/`, not a separate PyPI package
+
+2. **Async Context Violations**
+   - Always use `await` for device operations
+   - Use `hass.async_add_executor_job()` for Pillow operations (CPU-bound)
+   - Never call blocking functions in coordinator update methods
+
+3. **Entity State Updates**
+   - Coordinator-based entities get automatic updates via `self.coordinator.data`
+   - Call `self.async_write_ha_state()` only when changing state outside coordinator
+   - Media player entity manages its own state (not coordinator-based)
+
+4. **Service Call Queuing**
+   - Services are queued per device to prevent race conditions
+   - Watch for queue depth warnings (>20 items indicates a problem)
+   - Each device has its own FIFO queue managed in `__init__.py`
+
+5. **Image Processing Limits**
+   - Max download size: 10MB
+   - Timeout: 30 seconds
+   - Always resize to 64x64 (or device resolution)
+   - Convert to RGB (remove alpha channel) before sending to device
+
+### Debugging Tips
+
+```bash
+# Enable debug logging for pixoo integration
+# Add to configuration.yaml:
+logger:
+  default: info
+  logs:
+    custom_components.pixoo: debug
+    custom_components.pixoo.pixooasync: debug
+
+# Check device connectivity
+curl -X POST http://192.168.1.100/post -d '{"Command":"Device/GetDeviceInfo"}'
+
+# Verify SSDP discovery
+# Device should announce: manufacturer="Divoom", model="Pixoo64" (or similar)
+
+# Test image download
+python3 -c "
+from custom_components.pixoo.utils import download_and_process_image
+import asyncio
+asyncio.run(download_and_process_image('https://example.com/image.jpg'))
+"
+
+# Run specific test with verbose output
+pytest tests/test_media_player.py -vv -s
+```
+
+### Testing Strategy
+
+1. **Unit Tests**: Test individual entity methods with mocked PixooAsync client
+2. **Integration Tests**: Test coordinator data flow and entity registration
+3. **Service Tests**: Test service schemas and call handling
+4. **Config Flow Tests**: Test setup, discovery, and options flow
+
+### Key Resources
+
+- **Issue Tracker**: https://github.com/kmplngj/pixoo-ha/issues
+- **Documentation**: https://github.com/kmplngj/pixoo-ha
+- **Specifications**: `specs/001-pixoo-integration/spec.md` (756 lines, 13 user stories)
+- **Entity Mapping**: `specs/001-pixoo-integration/ENTITY_MAPPING.md`
+- **Constitution**: `.specify/memory/constitution.md` (7 core principles)
+- **Quickstart Guide**: `specs/001-pixoo-integration/quickstart.md`
+- **Examples**:
+  - Drawing: `DRAWING_EXAMPLES.md`
+  - Media Player: `MEDIA_PLAYER_IMPLEMENTATION.md`
+  - iOS Shortcuts: `IOS_SHORTCUTS_GUIDE.md`
+  - Automations: `automation_media_player_example.yaml`
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
