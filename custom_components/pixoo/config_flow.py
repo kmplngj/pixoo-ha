@@ -63,7 +63,6 @@ async def validate_connection(
                 "ip_address": device_ip,
                 "model": model_name,
                 "size": device_size,
-                "firmware_version": "Unknown",  # Not available via API
                 "device_id": device_info.get("DeviceId", "0"),
             }
         else:
@@ -74,7 +73,6 @@ async def validate_connection(
                 "ip_address": device_ip,
                 "model": "Pixoo",
                 "size": 64,  # Default to 64 for unknown devices
-                "firmware_version": "Unknown",
                 "device_id": "0",
             }
     finally:
