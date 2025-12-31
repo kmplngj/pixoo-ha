@@ -18,6 +18,12 @@ Transform your Pixoo into a powerful smart display:
 - 🎨 **Custom Animations** - Upload your own pixel art and GIFs
 - 📱 **iOS Shortcuts** - Send photos directly from iPhone/iPad
 
+## 🆚 Vergleich mit `pixoo-homeassistant`
+
+Falls du dich fragst, was die (HACS Default) Integration `pixoo-homeassistant` im Vergleich zu `pixoo-ha` „mehr/besser“ macht (und umgekehrt):
+
+- Siehe [`PIXOO_HOMEASSISTANT_COMPARISON.md`](PIXOO_HOMEASSISTANT_COMPARISON.md)
+
 ## 🎯 Features
 
 ### Device Control
