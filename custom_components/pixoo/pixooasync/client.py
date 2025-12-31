@@ -1,6 +1,7 @@
 """Main Pixoo client with sync and async support."""
 
 import base64
+import logging
 from typing import TYPE_CHECKING
 
 import httpx
@@ -49,6 +50,8 @@ except ImportError:
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class PixooBase:
@@ -1697,7 +1700,16 @@ class PixooAsync(PixooBase):
 
         payload = self._create_command_payload("Channel/GetAllConf")
         response = await self._client.post(self._url, json=payload)
-        data = response.json()
+        
+        # Check response status
+        response.raise_for_status()
+        
+        # Parse JSON with error handling
+        try:
+            data = response.json()
+        except Exception as json_err:
+            raise ValueError(f"Failed to parse response from Channel/GetAllConf: {json_err}") from json_err
+        
         return data
 
     async def get_current_channel(self) -> int:
@@ -1717,7 +1729,16 @@ class PixooAsync(PixooBase):
 
         payload = self._create_command_payload("Channel/GetIndex")
         response = await self._client.post(self._url, json=payload)
-        data = response.json()
+        
+        # Check response status
+        response.raise_for_status()
+        
+        # Parse JSON with error handling
+        try:
+            data = response.json()
+        except Exception as json_err:
+            raise ValueError(f"Failed to parse response from Channel/GetIndex: {json_err}") from json_err
+        
         return data.get("SelectIndex", 0)
 
     @staticmethod
@@ -1975,7 +1996,14 @@ class PixooAsync(PixooBase):
         response = await self._client.post(
             self._url, json=self._create_command_payload("Device/GetWeatherInfo")
         )
-        result = response.json()
+        
+        # Check response status
+        try:
+            response.raise_for_status()
+            result = response.json()
+        except Exception as err:
+            _LOGGER.debug("Failed to get weather info: %s", err)
+            return None
 
         # API may return error if weather not configured
         if result.get("error_code") != 0:
@@ -2048,7 +2076,14 @@ class PixooAsync(PixooBase):
         response = await self._client.post(
             self._url, json=self._create_command_payload("Device/GetDeviceTime")
         )
-        result = response.json()
+        
+        # Check response status and parse JSON
+        try:
+            response.raise_for_status()
+            result = response.json()
+        except Exception as err:
+            _LOGGER.debug("Failed to get time info: %s", err)
+            return None
 
         # API may return error if not supported
         if result.get("error_code") != 0:

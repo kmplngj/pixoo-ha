@@ -20,7 +20,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_DEVICE_SIZE
 from .coordinator import PixooSystemCoordinator
 from .utils import download_image
 
@@ -427,7 +427,8 @@ class PixooMediaPlayer(MediaPlayerEntity):
         
         # Download and display image
         try:
-            image_data = await download_image(self.hass, url)
+            device_size = self._entry.data.get(CONF_DEVICE_SIZE, 64)
+            image_data = await download_image(self.hass, url, target_size=(device_size, device_size))
             await self.pixoo.display_image_from_bytes(image_data)
             self._media_image_url = url
             self.async_write_ha_state()

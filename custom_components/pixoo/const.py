@@ -108,6 +108,7 @@ ATTR_RGB: Final = "rgb"
 # Config flow
 CONF_DEVICE_IP: Final = "device_ip"
 CONF_DEVICE_NAME: Final = "device_name"
+CONF_DEVICE_SIZE: Final = "device_size"  # Display size: 16, 32, or 64
 
 # Coordinator update intervals
 UPDATE_INTERVAL_DEVICE: Final = None  # Once at startup

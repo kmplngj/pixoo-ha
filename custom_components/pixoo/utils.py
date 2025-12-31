@@ -21,6 +21,44 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 
+def detect_device_size(model_name: str) -> int:
+    """
+    Detect device size from model name.
+    
+    Args:
+        model_name: Device model name (e.g., "Pixoo-16", "Pixoo-64")
+    
+    Returns:
+        Display size in pixels (16, 32, or 64)
+    
+    Examples:
+        >>> detect_device_size("Pixoo-16")
+        16
+        >>> detect_device_size("Pixoo-64")
+        64
+        >>> detect_device_size("Pixoo Max")
+        32
+        >>> detect_device_size("Unknown Device")
+        64
+    """
+    model_lower = model_name.lower()
+    
+    # Check for explicit size in model name
+    if "16" in model_lower or "pixoo16" in model_lower:
+        return 16
+    elif "32" in model_lower or "max" in model_lower:
+        return 32
+    elif "64" in model_lower or "pixoo64" in model_lower:
+        return 64
+    
+    # Default to 64 for unknown models (backwards compatibility)
+    _LOGGER.warning(
+        "Unable to detect size from model '%s', defaulting to 64x64",
+        model_name
+    )
+    return 64
+
+
 async def download_image(
     hass: HomeAssistant,
     url: str,

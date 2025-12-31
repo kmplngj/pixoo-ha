@@ -15,7 +15,8 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import CONF_DEVICE_IP, CONF_DEVICE_NAME, DEFAULT_NAME, DOMAIN
+from .const import CONF_DEVICE_IP, CONF_DEVICE_NAME, CONF_DEVICE_SIZE, DEFAULT_NAME, DOMAIN
+from .utils import detect_device_size
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,12 +54,15 @@ async def validate_connection(
         
         if device_info and device_info.get("DevicePrivateIP") == device_ip:
             # Found matching device via cloud discovery
+            model_name = device_info.get("DeviceName", "Pixoo")
+            device_size = detect_device_size(model_name)
+            
             return {
-                "title": device_info.get("DeviceName", DEFAULT_NAME),
+                "title": model_name,
                 "unique_id": device_info.get("DeviceMac", device_ip.replace(".", "")),
                 "ip_address": device_ip,
-                "model": device_info.get("DeviceName", "Pixoo"),
-                "firmware_version": "Unknown",  # Not available via API
+                "model": model_name,
+                "size": device_size,
                 "device_id": device_info.get("DeviceId", "0"),
             }
         else:
@@ -68,7 +72,7 @@ async def validate_connection(
                 "unique_id": device_ip.replace(".", ""),  # Use IP as unique_id fallback
                 "ip_address": device_ip,
                 "model": "Pixoo",
-                "firmware_version": "Unknown",
+                "size": 64,  # Default to 64 for unknown devices
                 "device_id": "0",
             }
     finally:
@@ -116,7 +120,11 @@ class PixooConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore
                 self._abort_if_unique_id_configured(updates={CONF_HOST: ip})
                 return self.async_create_entry(
                     title=user_input.get(CONF_DEVICE_NAME, info["title"]),
-                    data={CONF_HOST: ip, CONF_NAME: user_input.get(CONF_DEVICE_NAME, info["title"])},
+                    data={
+                        CONF_HOST: ip,
+                        CONF_NAME: user_input.get(CONF_DEVICE_NAME, info["title"]),
+                        CONF_DEVICE_SIZE: info["size"],
+                    },
                 )
         return self.async_show_form(step_id="manual", data_schema=STEP_MANUAL_SCHEMA, errors=errors)
 
@@ -141,7 +149,11 @@ class PixooConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore
                     self._abort_if_unique_id_configured(updates={CONF_HOST: chosen_ip})
                     return self.async_create_entry(
                         title=info["title"],
-                        data={CONF_HOST: chosen_ip, CONF_NAME: info["title"]},
+                        data={
+                            CONF_HOST: chosen_ip,
+                            CONF_NAME: info["title"],
+                            CONF_DEVICE_SIZE: info["size"],
+                        },
                     )
         
         # Discover devices via Divoom cloud API
