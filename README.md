@@ -3,7 +3,7 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
-Modern Home Assistant integration for **Divoom Pixoo** LED displays (Pixoo64, Pixoo Max, Timebox Evo). Display images, animated GIFs, scrolling text, and more on your Pixoo device directly from Home Assistant.
+Modern Home Assistant integration for **Divoom Pixoo** LED displays (Pixoo 16, Pixoo 64, Pixoo Max, Timebox Evo). Display images, animated GIFs, scrolling text, and more on your Pixoo device directly from Home Assistant.
 
 ## ✨ What Can You Do?
 
@@ -72,9 +72,19 @@ Falls du dich fragst, was die (HACS Default) Integration `pixoo-homeassistant` i
 ## Requirements
 
 - Home Assistant 2024.1 or newer
-- Divoom Pixoo device (Pixoo 64, Pixoo Max, or Timebox Evo)
+- Divoom Pixoo device (Pixoo 16, Pixoo 64, Pixoo Max, or Timebox Evo)
 - Device connected to same network as Home Assistant
 - Python 3.12 or newer
+
+## Supported Devices
+
+This integration automatically detects and configures the correct display size for:
+
+- **Pixoo 16** - 16x16 pixel display
+- **Pixoo 64** - 64x64 pixel display (most common)
+- **Pixoo Max** - 32x32 pixel display
+
+All features work across different device sizes. Images are automatically resized to match your device's resolution.
 
 ## Installation
 
@@ -98,13 +108,16 @@ Falls du dich fragst, was die (HACS Default) Integration `pixoo-homeassistant` i
 
 ### Automatic Discovery (Recommended)
 
-The integration supports automatic device discovery via SSDP:
+The integration supports automatic device discovery via the Divoom cloud API:
 
 1. Go to **Settings** → **Devices & Services**
 2. Click **+ Add Integration**
 3. Search for "Pixoo"
-4. Select your device from discovered devices
-5. Click **Submit**
+4. Choose **Scan for devices** to automatically discover Pixoo devices on your network
+5. Select your device from the list
+6. Click **Submit**
+
+The integration will automatically detect your device model (Pixoo 16, Pixoo 64, etc.) and configure the correct display size. This ensures images are properly resized for your screen.
 
 ### Manual Configuration
 
@@ -113,8 +126,11 @@ If automatic discovery doesn't work:
 1. Go to **Settings** → **Devices & Services**
 2. Click **+ Add Integration**
 3. Search for "Pixoo"
-4. Enter the IP address of your Pixoo device
-5. Click **Submit**
+4. Choose **Manual setup**
+5. Enter the IP address of your Pixoo device
+6. Click **Submit**
+
+**Note:** Manual setup attempts to detect the device model from the cloud API. If detection fails, it defaults to 64x64 resolution. You can verify the detected model in the device information page.
 
 ## 📋 Available Services
 
@@ -688,7 +704,7 @@ In the UI, these entities allow toggling even if the device is offline; failure 
 1. Ensure device is powered on and connected to Wi-Fi
 2. Check that Home Assistant and Pixoo are on same network
 3. Try manual configuration with device IP address
-4. Check firewall rules allow SSDP (UDP port 1900)
+4. Check firewall rules allow access to Divoom cloud API
 
 ### Connection Timeout Errors
 
@@ -697,12 +713,39 @@ In the UI, these entities allow toggling even if the device is offline; failure 
 3. Try power cycling the Pixoo device
 4. Use **Settings** → **Devices & Services** → **Pixoo** → **Reconfigure**
 
+### Pixoo 16 Specific Issues
+
+**On/Off State Not Syncing:**
+- The integration now uses `async_refresh()` to immediately update state after power changes
+- If state still doesn't update, enable debug logging to see API responses:
+  ```yaml
+  logger:
+    default: info
+    logs:
+      custom_components.pixoo: debug
+  ```
+- Check logs for "System config updated" messages showing `screen_power` value
+- If physical button presses don't update state in HA, this is expected due to polling interval (30s)
+
+**Device Size Detection:**
+- The integration automatically detects Pixoo 16 from the device model name
+- Verify correct detection in **Settings** → **Devices & Services** → **Pixoo** → Device info
+- Model should show "Pixoo-16" (not "Pixoo-64")
+- If wrong size detected, delete integration and re-add with discovery or manual setup
+
+**Image Display Issues:**
+- Images are automatically resized to 16x16 pixels for Pixoo 16
+- Very small images may lose detail when scaled down
+- Use pixel art style images for best results on 16x16 display
+- GIFs are also automatically resized to match device resolution
+
 ### Image Display Issues
 
 1. Check image URL is accessible from Home Assistant
 2. Verify image size (max 10MB)
 3. Ensure image format is supported (JPEG, PNG, GIF)
 4. Check Home Assistant logs for detailed error messages
+5. For Pixoo 16, ensure images are recognizable at 16x16 resolution
 
 ### Slideshow Not Auto-Advancing
 

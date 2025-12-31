@@ -79,6 +79,12 @@ class PixooSystemCoordinator(PixooDataUpdateCoordinator):
                 "hour_mode": system_config.hour_mode,
                 "screen_power": system_config.screen_power,
             }
+            
+            _LOGGER.debug(
+                "System config updated: brightness=%d, screen_power=%s",
+                system_config.brightness,
+                system_config.screen_power,
+            )
 
             # Fetch current channel (Channel/GetIndex API works!)
             channel_index: int = await self.pixoo.get_current_channel()

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from homeassistant.components.light import (
@@ -17,6 +18,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .coordinator import PixooSystemCoordinator
 from .entity import PixooEntity
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -78,18 +81,29 @@ class PixooLight(PixooEntity, LightEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the light on."""
+        _LOGGER.debug("Turning on Pixoo display")
+        
         if ATTR_BRIGHTNESS in kwargs:
             brightness = kwargs[ATTR_BRIGHTNESS]
             # Convert from 0-255 to 0-100
             brightness_pct = int(brightness * 100 / 255)
+            _LOGGER.debug("Setting brightness to %d%%", brightness_pct)
             await self._pixoo.set_brightness(brightness_pct)
         
         # Turn screen on (separate from brightness)
         await self._pixoo.set_screen(on=True)
-        await self.coordinator.async_request_refresh()
+        _LOGGER.debug("Screen turned on, refreshing coordinator")
+        
+        # Force immediate coordinator refresh to update state
+        await self.coordinator.async_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the light off."""
+        _LOGGER.debug("Turning off Pixoo display")
+        
         # Turn screen off (keeps brightness setting)
         await self._pixoo.set_screen(on=False)
-        await self.coordinator.async_request_refresh()
+        _LOGGER.debug("Screen turned off, refreshing coordinator")
+        
+        # Force immediate coordinator refresh to update state
+        await self.coordinator.async_refresh()
