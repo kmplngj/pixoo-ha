@@ -34,8 +34,8 @@ display_image_data:
           multiline: true
 
 display_gif:
-  name: Display GIF
-  description: Display an animated GIF from a URL or local file path on the Pixoo device.
+  name: Display GIF/Animation
+  description: Display an animated GIF or WebP from a URL. Supports both static images and animations with multiple frames.
   target:
     entity:
       domain: light
@@ -43,11 +43,22 @@ display_gif:
   fields:
     url:
       name: URL
-      description: URL or local file path to the GIF. Supports http://, https://, and file:// protocols.
+      description: URL or local file path to the image. Supports http://, https://, and file:// protocols. Animated GIFs and WebP will play as animations.
       required: true
       example: "https://example.com/animation.gif"
       selector:
         text:
+    speed_ms:
+      name: Frame Speed (ms)
+      description: Frame duration in milliseconds. If not set, uses the animation's embedded timing (default 100ms).
+      required: false
+      example: 100
+      selector:
+        number:
+          min: 10
+          max: 5000
+          step: 10
+          unit_of_measurement: ms
 
 display_text:
   name: Display text
@@ -620,3 +631,202 @@ set_white_balance:
         number:
           min: 0
           max: 255
+
+# Page Engine Services
+render_page:
+  name: Render page
+  description: >-
+    Render a Page Engine page (components/template) onto one or more Pixoo devices.
+    This is a full render: it clears/fills the device buffer, draws all components, then pushes.
+    If you want incremental drawing, use the drawing/buffer services and call push_buffer explicitly.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+  fields:
+    page:
+      name: Page
+      description: Page definition (see specs/002-page-engine). Typically a components page with text/rectangle/image components.
+      required: true
+      selector:
+        object:
+    variables:
+      name: Variables
+      description: Optional variables for template rendering.
+      required: false
+      selector:
+        object:
+    allowlist_mode:
+      name: Allowlist mode
+      description: >-
+        Strict (default) requires Home Assistant allowlisting for image URLs/paths.
+        Permissive disables allowlisting (timeouts/size limits still apply for URLs).
+      required: false
+      selector:
+        select:
+          options:
+            - "strict"
+            - "permissive"
+
+render_page_by_name:
+  name: Render page by name
+  description: >-
+    Render a named page from a YAML pages file onto one or more Pixoo devices.
+    The page is identified by its 'name' field in the YAML definition.
+    This allows you to define multiple pages in a single YAML file and render them on demand.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+  fields:
+    page_name:
+      name: Page name
+      description: >-
+        The name of the page to render. Must match the 'name' field in a page definition
+        within the YAML file.
+      required: true
+      example: "battery_status"
+      selector:
+        text:
+    pages_file:
+      name: Pages file
+      description: >-
+        Path to the YAML file containing page definitions. Can be absolute or relative
+        to the Home Assistant config directory. Defaults to 'pixoo_pages.yaml'.
+      required: false
+      example: "pixoo_pages.yaml"
+      default: "pixoo_pages.yaml"
+      selector:
+        text:
+    variables:
+      name: Variables
+      description: Optional variables for template rendering.
+      required: false
+      selector:
+        object:
+    allowlist_mode:
+      name: Allowlist mode
+      description: >-
+        Strict (default) requires Home Assistant allowlisting for image URLs/paths.
+        Permissive disables allowlisting (timeouts/size limits still apply for URLs).
+      required: false
+      selector:
+        select:
+          options:
+            - "strict"
+            - "permissive"
+
+show_message:
+  name: Show message
+  description: >-
+    Show a temporary override page for a given duration.
+    Last-wins: a new message replaces the previous one.
+    When the duration expires, rotation resumes only if it was running before.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+  fields:
+    page:
+      name: Page
+      description: Page definition to show as a temporary override.
+      required: true
+      selector:
+        object:
+    duration:
+      name: Duration
+      description: How long to show the message (seconds).
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 3600
+          unit_of_measurement: "s"
+    variables:
+      name: Variables
+      description: Optional variables for template rendering.
+      required: false
+      selector:
+        object:
+    allowlist_mode:
+      name: Allowlist mode
+      description: >-
+        Strict (default) requires Home Assistant allowlisting for image URLs/paths.
+        Permissive disables allowlisting (timeouts/size limits still apply for URLs).
+      required: false
+      selector:
+        select:
+          options:
+            - "strict"
+            - "permissive"
+
+rotation_enable:
+  name: Rotation enable
+  description: Enable or disable Page Engine rotation for one or more Pixoo devices.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+  fields:
+    enabled:
+      name: Enabled
+      description: Whether rotation should run.
+      required: true
+      selector:
+        boolean:
+
+rotation_next:
+  name: Rotation next
+  description: Immediately advance to the next active rotation page.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+
+rotation_reload_pages:
+  name: Rotation reload pages
+  description: Reload YAML-defined rotation pages (if configured) and apply immediately when rotation is running.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+
+set_rotation_config:
+  name: Set rotation config
+  description: Configure Page Engine rotation settings including YAML path and default duration.
+  target:
+    entity:
+      domain: light
+      integration: pixoo
+  fields:
+    enabled:
+      name: Enabled
+      description: Whether rotation should run.
+      required: false
+      selector:
+        boolean:
+    default_duration:
+      name: Default duration
+      description: Default page display duration in seconds (used when page has no duration).
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 3600
+          unit_of_measurement: "s"
+    pages_yaml_path:
+      name: Pages YAML path
+      description: Path to YAML file containing page definitions (e.g., /config/pixoo_pages.yaml).
+      required: false
+      example: "/config/pixoo_pages.yaml"
+      selector:
+        text:
+    allowlist_mode:
+      name: Allowlist mode
+      description: Security mode for image URLs/paths.
+      required: false
+      selector:
+        select:
+          options:
+            - "strict"
+            - "permissive"

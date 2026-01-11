@@ -1,0 +1,49 @@
+# Built-in template: now_playing
+# Variables:
+# - title: string
+# - artist: string
+# - cover_url: string (optional)
+# - text_color: color (optional)
+# - overlay_color: color (optional)
+
+page_type: components
+background: "{{ background }}"
+variables:
+  background: "#000000"
+  title: ""
+  artist: ""
+  cover_url: ""
+  text_color: "#FFFFFF"
+  overlay_color: "#000000"
+
+components:
+  # Optional cover (full-screen). If cover_url is empty, this component will fail
+  # (best-effort semantics mean the rest still renders).
+  - type: image
+    x: 0
+    y: 0
+    source:
+      url: "{{ cover_url }}"
+
+  # Text overlay background bar
+  - type: rectangle
+    x: 0
+    y: 46
+    width: 64
+    height: 18
+    filled: true
+    color: "{{ overlay_color }}"
+
+  - type: text
+    x: 2
+    y: 48
+    align: left
+    text: "{{ title }}"
+    color: "{{ text_color }}"
+
+  - type: text
+    x: 2
+    y: 56
+    align: left
+    text: "{{ artist }}"
+    color: "{{ text_color }}"

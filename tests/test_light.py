@@ -26,7 +26,7 @@ async def test_light_turn_on(hass: HomeAssistant, mock_pixoo, setup_integration)
         blocking=True,
     )
     
-    mock_pixoo.turn_on.assert_called_once()
+    mock_pixoo.set_screen.assert_called_once_with(on=True)
 
 
 async def test_light_turn_on_with_brightness(hass: HomeAssistant, mock_pixoo, setup_integration) -> None:
@@ -42,6 +42,7 @@ async def test_light_turn_on_with_brightness(hass: HomeAssistant, mock_pixoo, se
     
     # 128/255 * 100 = 50%
     mock_pixoo.set_brightness.assert_called_with(50)
+    mock_pixoo.set_screen.assert_called_with(on=True)
 
 
 async def test_light_turn_off(hass: HomeAssistant, mock_pixoo, setup_integration) -> None:
@@ -55,7 +56,7 @@ async def test_light_turn_off(hass: HomeAssistant, mock_pixoo, setup_integration
         blocking=True,
     )
     
-    mock_pixoo.set_brightness.assert_called_with(0)
+    mock_pixoo.set_screen.assert_called_once_with(on=False)
 
 
 async def test_light_state(hass: HomeAssistant, mock_pixoo, setup_integration) -> None:

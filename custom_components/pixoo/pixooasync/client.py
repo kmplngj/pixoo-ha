@@ -278,13 +278,17 @@ class PixooBase:
         image_resample_mode: ImageResampleMode = ImageResampleMode.PIXEL_ART,
         pad_resample: bool = False,
     ) -> None:
-        """Draw an image on the display.
+        """Draw an image on the display with alpha blending support.
 
         Args:
             image_path_or_object: Image path or PIL Image object
             xy: Position to draw at
             image_resample_mode: Resampling mode for scaling
             pad_resample: Whether to pad when resampling
+            
+        If the image has an alpha channel (RGBA), pixels will be blended
+        with the existing buffer using alpha compositing. Fully transparent
+        pixels (alpha=0) are skipped entirely.
         """
         image = (
             image_path_or_object
@@ -309,17 +313,57 @@ class PixooBase:
             if self.debug:
                 print(f"[.] Resized image: {(width, height)} -> {image.size}")
 
-        # Draw pixels
-        rgb_image = image.convert("RGB")
-        for y in range(image.size[1]):
-            for x in range(image.size[0]):
-                placed_x = x + xy[0]
-                placed_y = y + xy[1]
+        # Check if image has alpha channel
+        has_alpha = image.mode == "RGBA"
+        
+        if has_alpha:
+            # Alpha blending mode
+            for y in range(image.size[1]):
+                for x in range(image.size[0]):
+                    placed_x = x + xy[0]
+                    placed_y = y + xy[1]
 
-                if placed_x < 0 or placed_x >= self.size or placed_y < 0 or placed_y >= self.size:
-                    continue
+                    if placed_x < 0 or placed_x >= self.size or placed_y < 0 or placed_y >= self.size:
+                        continue
 
-                self.draw_pixel((placed_x, placed_y), rgb_image.getpixel((x, y)))  # type: ignore
+                    r, g, b, a = image.getpixel((x, y))  # type: ignore
+                    
+                    if a == 0:
+                        # Fully transparent - skip
+                        continue
+                    elif a == 255:
+                        # Fully opaque - direct draw
+                        self.draw_pixel((placed_x, placed_y), (r, g, b))
+                    else:
+                        # Semi-transparent - blend with existing pixel
+                        # Get existing pixel from buffer
+                        buffer_idx = placed_y * self.size + placed_x
+                        if buffer_idx < len(self._buffer) // 3:
+                            existing_r = self._buffer[buffer_idx * 3]
+                            existing_g = self._buffer[buffer_idx * 3 + 1]
+                            existing_b = self._buffer[buffer_idx * 3 + 2]
+                        else:
+                            existing_r, existing_g, existing_b = 0, 0, 0
+                        
+                        # Alpha blend: out = src * alpha + dst * (1 - alpha)
+                        alpha = a / 255.0
+                        blended_r = int(r * alpha + existing_r * (1 - alpha))
+                        blended_g = int(g * alpha + existing_g * (1 - alpha))
+                        blended_b = int(b * alpha + existing_b * (1 - alpha))
+                        
+                        self.draw_pixel((placed_x, placed_y), (blended_r, blended_g, blended_b))
+        else:
+            # No alpha - direct RGB drawing (original behavior)
+            rgb_image = image.convert("RGB")
+            for y in range(image.size[1]):
+                for x in range(image.size[0]):
+                    placed_x = x + xy[0]
+                    placed_y = y + xy[1]
+
+                    if placed_x < 0 or placed_x >= self.size or placed_y < 0 or placed_y >= self.size:
+                        continue
+
+                    self.draw_pixel((placed_x, placed_y), rgb_image.getpixel((x, y)))  # type: ignore
 
     def draw_image_at_location(
         self,
@@ -465,6 +509,115 @@ class Pixoo(PixooBase):
             self._buffers_sent += 1
             if self.debug:
                 print(f"[.] Pushed {self._buffers_sent} buffers")
+
+    def push_animation(
+        self,
+        image_path_or_object: "str | Path | Image.Image",
+        speed_ms: int | None = None,
+    ) -> int:
+        """Push animated GIF/WebP to device.
+
+        Extracts all frames and sends as animation to the device.
+        Supports GIF and WebP animations with transparency (RGBA).
+
+        Args:
+            image_path_or_object: Path to animated image or PIL Image object
+            speed_ms: Frame duration in milliseconds. If None, uses the 
+                      duration from the image metadata (default: 100ms)
+
+        Returns:
+            Number of frames sent
+        """
+        image = (
+            image_path_or_object
+            if isinstance(image_path_or_object, Image.Image)
+            else Image.open(image_path_or_object)
+        )
+
+        # Get number of frames
+        n_frames = getattr(image, "n_frames", 1)
+        if n_frames <= 1:
+            # Single frame - use regular push
+            self.draw_image(image)
+            self.push()
+            return 1
+
+        # Get frame duration from image metadata or use provided/default
+        if speed_ms is None:
+            try:
+                speed_ms = image.info.get("duration", 100)
+            except Exception:
+                speed_ms = 100
+
+        if self.debug:
+            print(f"[.] Pushing animation: {n_frames} frames, {speed_ms}ms per frame")
+
+        # Extract all frames
+        frames_data: list[bytes] = []
+        
+        for frame_idx in range(n_frames):
+            image.seek(frame_idx)
+            frame = image.convert("RGBA")
+            
+            # Resize if needed
+            if frame.size[0] != self.size or frame.size[1] != self.size:
+                frame = frame.resize((self.size, self.size), Image.Resampling.LANCZOS)
+            
+            # Convert RGBA to RGB buffer (composite onto black background)
+            rgb_frame = Image.new("RGB", (self.size, self.size), (0, 0, 0))
+            rgb_frame.paste(frame, mask=frame.split()[3])
+            
+            # Convert to raw RGB bytes
+            frame_buffer = bytearray(self.size * self.size * 3)
+            for y in range(self.size):
+                for x in range(self.size):
+                    r, g, b = rgb_frame.getpixel((x, y))
+                    idx = (y * self.size + x) * 3
+                    frame_buffer[idx] = r
+                    frame_buffer[idx + 1] = g
+                    frame_buffer[idx + 2] = b
+            
+            frames_data.append(bytes(frame_buffer))
+
+        if self.config.simulated:
+            if self._simulator:
+                self._buffer = list(frames_data[0])
+                self._simulator.display(self._buffer, 1)
+            return n_frames
+
+        # Increment counter for new animation
+        self._counter += 1
+        if (
+            self.config.refresh_connection_automatically
+            and self._counter >= self._refresh_counter_limit
+        ):
+            self._reset_counter()
+            self._counter = 1
+
+        # Send all frames as one animation
+        all_frames_data = b"".join(frames_data)
+        
+        payload = self._create_command_payload(
+            "Draw/SendHttpGif",
+            PicNum=n_frames,
+            PicWidth=self.size,
+            PicOffset=0,
+            PicID=self._counter,
+            PicSpeed=speed_ms,
+            PicData=base64.b64encode(all_frames_data).decode(),
+        )
+
+        response = self._client.post(self._url, json=payload)
+        data = PixooResponse.model_validate(response.json())
+
+        if not data.success:
+            self._error(response.json())
+        else:
+            self._buffers_sent += n_frames
+            if self.debug:
+                print(f"[.] Pushed animation with {n_frames} frames")
+
+        return n_frames
 
     def send_text(
         self,
@@ -1530,6 +1683,115 @@ class PixooAsync(PixooBase):
             self._buffers_sent += 1
             if self.debug:
                 print(f"[.] Pushed {self._buffers_sent} buffers")
+
+    async def push_animation(
+        self,
+        image_path_or_object: "str | Path | Image.Image",
+        speed_ms: int | None = None,
+    ) -> int:
+        """Push animated GIF/WebP to device.
+
+        Extracts all frames and sends as animation to the device.
+        Supports GIF and WebP animations with transparency (RGBA).
+
+        Args:
+            image_path_or_object: Path to animated image or PIL Image object
+            speed_ms: Frame duration in milliseconds. If None, uses the 
+                      duration from the image metadata (default: 100ms)
+
+        Returns:
+            Number of frames sent
+        """
+        image = (
+            image_path_or_object
+            if isinstance(image_path_or_object, Image.Image)
+            else Image.open(image_path_or_object)
+        )
+
+        # Get number of frames
+        n_frames = getattr(image, "n_frames", 1)
+        if n_frames <= 1:
+            # Single frame - use regular push
+            self.draw_image(image)
+            await self.push()
+            return 1
+
+        # Get frame duration from image metadata or use provided/default
+        if speed_ms is None:
+            try:
+                speed_ms = image.info.get("duration", 100)
+            except Exception:
+                speed_ms = 100
+
+        if self.debug:
+            print(f"[.] Pushing animation: {n_frames} frames, {speed_ms}ms per frame")
+
+        # Extract all frames
+        frames_data: list[bytes] = []
+        
+        for frame_idx in range(n_frames):
+            image.seek(frame_idx)
+            frame = image.convert("RGBA")
+            
+            # Resize if needed
+            if frame.size[0] != self.size or frame.size[1] != self.size:
+                frame = frame.resize((self.size, self.size), Image.Resampling.LANCZOS)
+            
+            # Convert RGBA to RGB buffer (composite onto black background)
+            rgb_frame = Image.new("RGB", (self.size, self.size), (0, 0, 0))
+            rgb_frame.paste(frame, mask=frame.split()[3])
+            
+            # Convert to raw RGB bytes
+            frame_buffer = bytearray(self.size * self.size * 3)
+            for y in range(self.size):
+                for x in range(self.size):
+                    r, g, b = rgb_frame.getpixel((x, y))
+                    idx = (y * self.size + x) * 3
+                    frame_buffer[idx] = r
+                    frame_buffer[idx + 1] = g
+                    frame_buffer[idx + 2] = b
+            
+            frames_data.append(bytes(frame_buffer))
+
+        if self.config.simulated:
+            if self._simulator:
+                self._buffer = list(frames_data[0])
+                self._simulator.display(self._buffer, 1)
+            return n_frames
+
+        # Increment counter for new animation
+        self._counter += 1
+        if (
+            self.config.refresh_connection_automatically
+            and self._counter >= self._refresh_counter_limit
+        ):
+            await self._reset_counter()
+            self._counter = 1
+
+        # Send all frames as one animation
+        all_frames_data = b"".join(frames_data)
+        
+        payload = self._create_command_payload(
+            "Draw/SendHttpGif",
+            PicNum=n_frames,
+            PicWidth=self.size,
+            PicOffset=0,
+            PicID=self._counter,
+            PicSpeed=speed_ms,
+            PicData=base64.b64encode(all_frames_data).decode(),
+        )
+
+        response = await self._client.post(self._url, json=payload)
+        data = PixooResponse.model_validate(response.json())
+
+        if not data.success:
+            self._error(response.json())
+        else:
+            self._buffers_sent += n_frames
+            if self.debug:
+                print(f"[.] Pushed animation with {n_frames} frames")
+
+        return n_frames
 
     async def send_text(
         self,

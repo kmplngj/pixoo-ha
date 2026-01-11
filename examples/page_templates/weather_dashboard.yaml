@@ -1,0 +1,176 @@
+# Weather Dashboard Example
+# Demonstrates Arc (temperature ring) and Arrow (wind direction) components
+#
+# Requirements:
+#   - weather.* entity (e.g., weather.openweathermap, weather.forecast_home)
+#
+# This page displays:
+#   - Temperature as a circular progress ring (Arc component)
+#   - Wind direction with compass arrow (Arrow component)
+#   - Weather condition icon
+#   - Humidity percentage
+#   - Wind speed with color-coded intensity
+#
+# Template Variables:
+#   - weather_entity: The weather entity ID to use (default: weather.home)
+
+page_type: components
+background: "#001122"
+variables:
+  # Weather entity configuration
+  weather_entity: "weather.home"
+
+  # Extract weather attributes
+  temperature: "{{ state_attr(weather_entity, 'temperature') | float(0) | round(1) }}"
+  humidity: "{{ state_attr(weather_entity, 'humidity') | int(0) }}"
+  condition: "{{ states(weather_entity) }}"
+  wind_speed: "{{ state_attr(weather_entity, 'wind_speed') | float(0) | round(1) }}"
+  wind_bearing: "{{ state_attr(weather_entity, 'wind_bearing') | float(0) }}"
+
+  # Temperature arc angle (map -20°C to 40°C -> 0° to 360°)
+  temp_angle: "{{ ((temperature | float + 20) / 60 * 360) | int }}"
+
+  # Weather icon based on condition
+  weather_icon: >
+    {{ 'mdi:weather-sunny' if condition == 'sunny'
+       else 'mdi:weather-cloudy' if condition == 'cloudy'
+       else 'mdi:weather-partlycloudy' if condition == 'partlycloudy'
+       else 'mdi:weather-rainy' if condition == 'rainy'
+       else 'mdi:weather-pouring' if condition == 'pouring'
+       else 'mdi:weather-snowy' if condition == 'snowy'
+       else 'mdi:weather-fog' if condition == 'fog'
+       else 'mdi:weather-windy' }}
+
+components:
+  # Title (top center)
+  - type: text
+    x: 32
+    y: 2
+    align: center
+    text: "Wetter"
+    color: "#FFFFFF"
+
+  # Temperature arc (progress ring)
+  # Background ring (gray)
+  - type: arc
+    center: [32, 36]
+    radius: 20
+    start_angle: 0
+    end_angle: 360
+    color: "#224466"
+    thickness: 4
+    filled: false
+
+  # Temperature progress arc (colored, with thresholds)
+  - type: arc
+    center: [32, 36]
+    radius: 20
+    start_angle: 0
+    end_angle: "{{ temp_angle }}"
+    color: "#00FFFF"
+    thickness: 4
+    filled: false
+    value: "{{ temperature }}"
+    color_thresholds:
+      - value: 0
+        color: "#8888FF" # Very cold: light blue
+      - value: 10
+        color: "#0088FF" # Cold: blue
+      - value: 20
+        color: "#00FFFF" # Mild: cyan
+      - value: 25
+        color: "#FFFF00" # Warm: yellow
+      - value: 30
+        color: "#FF8800" # Hot: orange
+      - value: 35
+        color: "#FF0000" # Very hot: red
+
+  # Center weather icon
+  - type: icon
+    icon: "{{ weather_icon }}"
+    x: 24
+    y: 28
+    size: 16
+    color: "#FFFFFF"
+
+  # Temperature text (center bottom)
+  - type: text
+    x: 32
+    y: 48
+    align: center
+    text: "{{ temperature }}°"
+    value: "{{ temperature }}"
+    color_thresholds:
+      - value: 0
+        color: "#8888FF"
+      - value: 10
+        color: "#0088FF"
+      - value: 20
+        color: "#00FFFF"
+      - value: 25
+        color: "#FFFF00"
+      - value: 30
+        color: "#FF8800"
+      - value: 35
+        color: "#FF0000"
+
+  # Humidity (top right)
+  - type: icon
+    icon: mdi:water-percent
+    x: 50
+    y: 2
+    size: 10
+    color: "#00AAFF"
+  - type: text
+    x: 60
+    y: 3
+    text: "{{ humidity }}"
+    color: "#00AAFF"
+    align: left
+
+  # Wind indicator (bottom left corner)
+  # Compass circle
+  - type: circle
+    center: [12, 56]
+    radius: 6
+    color: "#444466"
+    filled: false
+    thickness: 1
+
+  # Wind direction arrow (0° = North, clockwise)
+  - type: arrow
+    center: [12, 56]
+    length: 5
+    angle: "{{ wind_bearing }}"
+    color: "#00FF00"
+    thickness: 1
+    head_size: 2
+    value: "{{ wind_speed }}"
+    color_thresholds:
+      - value: 10
+        color: "#00FF00" # Light breeze: green
+      - value: 20
+        color: "#FFAA00" # Moderate wind: orange
+      - value: 30
+        color: "#FF4444" # Strong wind: red
+
+  # Wind speed text
+  - type: text
+    x: 21
+    y: 54
+    text: "{{ wind_speed }}"
+    value: "{{ wind_speed }}"
+    align: left
+    color_thresholds:
+      - value: 10
+        color: "#00FF00"
+      - value: 20
+        color: "#FFAA00"
+      - value: 30
+        color: "#FF4444"
+  - type: text
+    x: 21
+    y: 59
+    text: "km/h"
+    color: "#666666"
+    align: left

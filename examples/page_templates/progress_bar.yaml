@@ -1,0 +1,50 @@
+# Built-in template: progress_bar
+# Variables:
+# - title: string (optional)
+# - progress: float 0..1 (required)
+# - bar_color: color (optional)
+# - text_color: color (optional)
+# - border_color: color (optional)
+
+page_type: components
+background: "{{ background }}"
+variables:
+  background: "#000000"
+  title: ""
+  progress: 0
+  bar_color: "#00FF00"
+  text_color: "#FFFFFF"
+  border_color: "#FFFFFF"
+
+components:
+  - type: text
+    x: 32
+    y: 6
+    align: center
+    text: "{{ title }}"
+    color: "{{ text_color }}"
+
+  - type: text
+    x: 32
+    y: 18
+    align: center
+    text: "{{ (progress|float * 100) | round(0) | int }}%"
+    color: "{{ text_color }}"
+
+  # Border
+  - type: rectangle
+    x: 1
+    y: 28
+    width: 62
+    height: 8
+    filled: false
+    color: "{{ border_color }}"
+
+  # Progress bar fill (60px usable width)
+  - type: rectangle
+    x: 2
+    y: 29
+    width: "{{ ( (progress|float) * 60 ) | round(0, 'floor') | int }}"
+    height: 6
+    filled: true
+    color: "{{ bar_color }}"

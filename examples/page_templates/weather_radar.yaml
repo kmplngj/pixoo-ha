@@ -1,0 +1,184 @@
+# Weather Radar Visualization
+#
+# Shows weather conditions with concentric circles (radar-like)
+# and cardinal direction indicators
+#
+# Variables:
+# - temperature: float (current temperature)
+# - humidity: float (current humidity 0-100)
+# - condition: string (weather condition)
+# - wind_speed: float (wind speed)
+# - wind_bearing: float (wind direction in degrees)
+
+page_type: components
+background: "{{ background }}"
+variables:
+  background: "#001122"
+  temperature: 22.5
+  humidity: 65
+  condition: "sunny"
+  wind_speed: 12.5
+  wind_bearing: 270
+
+  # Calculate if condition is rainy/cloudy for radar effect
+  is_rainy: "{{ condition in ['rainy', 'pouring', 'snowy', 'lightning'] }}"
+  is_cloudy: "{{ condition in ['cloudy', 'partlycloudy'] }}"
+
+  # Temperature color
+  temp_color: >
+    {{ '#FF0000' if temperature | float > 30 
+       else '#FF8800' if temperature | float > 25
+       else '#FFFF00' if temperature | float > 20
+       else '#00FFFF' if temperature | float > 10
+       else '#0088FF' if temperature | float > 0
+       else '#8888FF' }}
+
+components:
+  # Title
+  - type: text
+    x: 32
+    y: 2
+    align: center
+    text: "Weather"
+    color: "#FFFFFF"
+
+  # Center radar circles (concentric)
+  # Outer ring
+  - type: circle
+    center: [32, 36]
+    radius: 22
+    color: "#224466"
+    filled: false
+    thickness: 1
+
+  # Middle ring
+  - type: circle
+    center: [32, 36]
+    radius: 16
+    color: "#335577"
+    filled: false
+    thickness: 1
+
+  # Inner ring
+  - type: circle
+    center: [32, 36]
+    radius: 10
+    color: "#446688"
+    filled: false
+    thickness: 1
+
+  # Center dot
+  - type: circle
+    center: [32, 36]
+    radius: 2
+    color: "#FFFFFF"
+    filled: true
+
+  # Cardinal direction markers (N, E, S, W)
+  - type: text
+    x: 32
+    y: 14
+    align: center
+    text: "N"
+    color: "#AAAAAA"
+
+  - type: text
+    x: 54
+    y: 34
+    align: center
+    text: "E"
+    color: "#AAAAAA"
+
+  - type: text
+    x: 32
+    y: 54
+    align: center
+    text: "S"
+    color: "#AAAAAA"
+
+  - type: text
+    x: 10
+    y: 34
+    align: center
+    text: "W"
+    color: "#AAAAAA"
+
+  # Crosshair lines
+  - type: line
+    start: [32, 14]
+    end: [32, 24]
+    color: "#444466"
+    thickness: 1
+
+  - type: line
+    start: [32, 48]
+    end: [32, 58]
+    color: "#444466"
+    thickness: 1
+
+  - type: line
+    start: [10, 36]
+    end: [20, 36]
+    color: "#444466"
+    thickness: 1
+
+  - type: line
+    start: [44, 36]
+    end: [54, 36]
+    color: "#444466"
+    thickness: 1
+
+  # Weather indicator (rain drops as circles if rainy)
+  - type: circle
+    center: [26, 30]
+    radius: 2
+    color: "{{ '#00AAFF' if is_rainy else '#002244' }}"
+    filled: true
+
+  - type: circle
+    center: [38, 32]
+    radius: 2
+    color: "{{ '#00AAFF' if is_rainy else '#002244' }}"
+    filled: true
+
+  - type: circle
+    center: [30, 42]
+    radius: 2
+    color: "{{ '#00AAFF' if is_rainy else '#002244' }}"
+    filled: true
+
+  # Cloud indicator (circles if cloudy)
+  - type: circle
+    center: [24, 24]
+    radius: 3
+    color: "{{ '#888888' if is_cloudy or is_rainy else '#002244' }}"
+    filled: true
+
+  - type: circle
+    center: [40, 28]
+    radius: 3
+    color: "{{ '#888888' if is_cloudy or is_rainy else '#002244' }}"
+    filled: true
+
+  # Temperature display (bottom left)
+  - type: text
+    x: 2
+    y: 2
+    text: "{{ temperature | round(1) }}°"
+    color: "{{ temp_color }}"
+
+  # Humidity display (bottom right)
+  - type: text
+    x: 62
+    y: 2
+    align: right
+    text: "{{ humidity | int }}%"
+    color: "#00AAFF"
+
+  # Wind speed indicator
+  - type: text
+    x: 32
+    y: 62
+    align: center
+    text: "{{ wind_speed | round(1) }} km/h"
+    color: "#AAAAAA"

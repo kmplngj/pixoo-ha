@@ -1,0 +1,178 @@
+# Speedtest Dashboard für Pixoo Page Engine
+# Zeigt aktuelle Download/Upload Geschwindigkeit mit Fortschrittsbalken
+#
+# Benötigte Sensoren (Speedtest.net Integration):
+#   - sensor.speedtest_download (Mbit/s)
+#   - sensor.speedtest_upload (Mbit/s)
+#   - sensor.speedtest_ping (ms)
+#
+# Installation:
+#   1. Speedtest.net Integration in Home Assistant einrichten
+#   2. Diese Seite zu pixoo_pages.yaml hinzufügen
+#   3. Optional: Farb-Schwellwerte anpassen
+#
+# Hinweis: Die Speedtest Integration führt standardmäßig stündlich einen Test durch.
+#          Manuelle Tests können über homeassistant.update_entity ausgelöst werden.
+
+- name: speedtest_dashboard
+  page_type: components
+  duration: 15
+  background: "#000000"
+  variables:
+    # ─────────────────────────────────────────────────────────────
+    # Speedtest Werte
+    # ─────────────────────────────────────────────────────────────
+    download: "{{ states('sensor.speedtest_download') | float(0) | round(1) }}"
+    upload: "{{ states('sensor.speedtest_upload') | float(0) | round(1) }}"
+    ping: "{{ states('sensor.speedtest_ping') | float(0) | round(0) }}"
+
+    # ─────────────────────────────────────────────────────────────
+    # Progress Bars
+    # ─────────────────────────────────────────────────────────────
+    # ANPASSEN: Ändere die max-Werte entsprechend deiner Internetverbindung
+    # Beispiel: 1000 Mbit/s Download, 500 Mbit/s Upload
+    max_download: 1000
+    max_upload: 500
+
+    # Berechnung der Balkenbreite (max 56px, min 1px)
+    download_bar: "{{ [[((download | float) / max_download * 56) | int, 56] | min, 1] | max }}"
+    upload_bar: "{{ [[((upload | float) / max_upload * 56) | int, 56] | min, 1] | max }}"
+
+    # ─────────────────────────────────────────────────────────────
+    # Dynamische Farben basierend auf Geschwindigkeit
+    # ─────────────────────────────────────────────────────────────
+    # Download: Grün > 500, Gelb > 100, Rot < 100
+    download_color: "{{ '#00FF00' if download | float > 500 else '#FFAA00' if download | float > 100 else '#FF4444' }}"
+    # Upload: Grün > 100, Gelb > 50, Rot < 50
+    upload_color: "{{ '#00FF00' if upload | float > 100 else '#FFAA00' if upload | float > 50 else '#FF4444' }}"
+    # Ping: Grün < 20ms, Gelb < 50ms, Rot >= 50ms
+    ping_color: "{{ '#00FF00' if ping | float < 20 else '#FFAA00' if ping | float < 50 else '#FF4444' }}"
+
+  components:
+    # ═════════════════════════════════════════════════════════════
+    # Header Zeile
+    # ═════════════════════════════════════════════════════════════
+
+    # Speedometer Icon (oben links)
+    - type: icon
+      icon: mdi:speedometer
+      x: 4
+      y: 2
+      size: 16
+      color: "#8E44AD" # Lila/Purple
+
+    # Titel
+    - type: text
+      x: 22
+      y: 4
+      text: "Speed"
+      color: "#FFFFFF"
+      align: left
+
+    # Ping Anzeige (oben rechts)
+    - type: text
+      x: 60
+      y: 4
+      text: "{{ ping }}ms"
+      color: "{{ ping_color }}"
+      align: right
+
+    # ═════════════════════════════════════════════════════════════
+    # Download Bereich
+    # ═════════════════════════════════════════════════════════════
+
+    # Download Icon
+    - type: icon
+      icon: mdi:download
+      x: 4
+      y: 20
+      size: 12
+      color: "#00CC00"
+
+    # Download Wert
+    - type: text
+      x: 18
+      y: 20
+      text: "{{ download }}"
+      color: "{{ download_color }}"
+
+    # Einheit
+    - type: text
+      x: 60
+      y: 20
+      text: "Mb/s"
+      color: "#888888"
+      align: right
+
+    # Download Progress Bar - Hintergrund
+    - type: rectangle
+      x: 4
+      y: 32
+      width: 56
+      height: 4
+      color: "#333333"
+      filled: true
+
+    # Download Progress Bar - Füllstand
+    - type: rectangle
+      x: 4
+      y: 32
+      width: "{{ download_bar }}"
+      height: 4
+      color: "{{ download_color }}"
+      filled: true
+
+    # ═════════════════════════════════════════════════════════════
+    # Upload Bereich
+    # ═════════════════════════════════════════════════════════════
+
+    # Upload Icon
+    - type: icon
+      icon: mdi:upload
+      x: 4
+      y: 40
+      size: 12
+      color: "#FF6600"
+
+    # Upload Wert
+    - type: text
+      x: 18
+      y: 40
+      text: "{{ upload }}"
+      color: "{{ upload_color }}"
+
+    # Einheit
+    - type: text
+      x: 60
+      y: 40
+      text: "Mb/s"
+      color: "#888888"
+      align: right
+
+    # Upload Progress Bar - Hintergrund
+    - type: rectangle
+      x: 4
+      y: 52
+      width: 56
+      height: 4
+      color: "#333333"
+      filled: true
+
+    # Upload Progress Bar - Füllstand
+    - type: rectangle
+      x: 4
+      y: 52
+      width: "{{ upload_bar }}"
+      height: 4
+      color: "{{ upload_color }}"
+      filled: true
+
+    # ═════════════════════════════════════════════════════════════
+    # Footer - Letzte Aktualisierung
+    # ═════════════════════════════════════════════════════════════
+    - type: text
+      x: 32
+      y: 58
+      text: "{{ states.sensor.speedtest_download.last_changed.strftime('%H:%M') if states.sensor.speedtest_download.last_changed else '--:--' }}"
+      color: "#666666"
+      align: center

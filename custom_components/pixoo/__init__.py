@@ -6,7 +6,7 @@ import asyncio
 import logging
 from collections import deque
 from io import BytesIO
-from typing import Any
+from typing import Any, Awaitable
 
 from PIL import Image
 
@@ -23,11 +23,19 @@ from homeassistant.helpers import entity_registry as er
 
 from .const import (
     DOMAIN,
+    CONF_DEVICE_SIZE,
     SERVICE_DISPLAY_IMAGE,
     SERVICE_DISPLAY_IMAGE_DATA,
     SERVICE_DISPLAY_GIF,
     SERVICE_DISPLAY_TEXT,
     SERVICE_CLEAR_DISPLAY,
+    SERVICE_RENDER_PAGE,
+    SERVICE_RENDER_PAGE_BY_NAME,
+    SERVICE_SHOW_MESSAGE,
+    SERVICE_ROTATION_ENABLE,
+    SERVICE_ROTATION_NEXT,
+    SERVICE_ROTATION_RELOAD_PAGES,
+    SERVICE_SET_ROTATION_CONFIG,
     SERVICE_PLAY_BUZZER,
     SERVICE_LIST_ANIMATIONS,
     SERVICE_PLAY_ANIMATION,
@@ -45,6 +53,14 @@ from .const import (
     SERVICE_QUEUE_WARNING_DEPTH,
 )
 from .utils import download_image
+from .page_engine import raise_service_error
+from .page_engine.renderer import (
+    ALLOWLIST_MODE_PERMISSIVE,
+    ALLOWLIST_MODE_STRICT,
+    render_page as render_page_engine_page,
+)
+from .page_engine.rotation import RotationController
+from .page_engine.storage import load_page_by_name
 from .coordinator import (
     PixooSystemCoordinator,
     PixooWeatherCoordinator,
@@ -93,14 +109,20 @@ class ServiceQueue:
     def __init__(self, entry_id: str) -> None:
         """Initialize the service queue."""
         self.entry_id = entry_id
-        self._queue: deque = deque()
+        self._queue: deque[tuple[Awaitable[Any], asyncio.Future[Any]]] = deque()
         self._lock = asyncio.Lock()
         self._processing = False
 
-    async def enqueue(self, coro) -> None:
-        """Add a service call to the queue and process if not already processing."""
+    async def enqueue(self, coro: Awaitable[Any]) -> Any:
+        """Add a service call to the queue and wait for it to finish.
+
+        This ensures errors propagate back to the calling service handler.
+        """
+        loop = asyncio.get_running_loop()
+        fut: asyncio.Future[Any] = loop.create_future()
+
         async with self._lock:
-            self._queue.append(coro)
+            self._queue.append((coro, fut))
             queue_depth = len(self._queue)
 
             if queue_depth >= SERVICE_QUEUE_WARNING_DEPTH:
@@ -115,6 +137,8 @@ class ServiceQueue:
         if not self._processing:
             await self._process_queue()
 
+        return await fut
+
     async def _process_queue(self) -> None:
         """Process queued service calls in FIFO order."""
         self._processing = True
@@ -124,20 +148,27 @@ class ServiceQueue:
                 if not self._queue:
                     self._processing = False
                     return
-                coro = self._queue.popleft()
+                coro, fut = self._queue.popleft()
 
             try:
-                await coro
+                result = await coro
+                if not fut.done():
+                    fut.set_result(result)
             except Exception as err:
-                _LOGGER.error("Error processing service call: %s", err)
+                if not fut.done():
+                    fut.set_exception(err)
+                _LOGGER.error("Error processing service call for %s: %s", self.entry_id, err)
+
+
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Pixoo from a config entry."""
     host = entry.data[CONF_HOST]
+    device_size = entry.data.get(CONF_DEVICE_SIZE, 64)  # Default to 64 for backward compatibility
 
-    # Create Pixoo client
-    pixoo = PixooAsync(host)
+    # Create Pixoo client with correct device size
+    pixoo = PixooAsync(host, size=device_size)
 
     # Initialize the client (creates httpx.AsyncClient without blocking)
     await pixoo.initialize()
@@ -150,9 +181,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         raise ConfigEntryNotReady(f"Failed to connect to device: {err}") from err
 
     # Initialize coordinators (device coordinator removed - API doesn't work)
-    system_coordinator = PixooSystemCoordinator(hass, pixoo)
-    weather_coordinator = PixooWeatherCoordinator(hass, pixoo)
-    gallery_coordinator = PixooGalleryCoordinator(hass, pixoo)
+    system_coordinator = PixooSystemCoordinator(hass, pixoo, entry)
+    weather_coordinator = PixooWeatherCoordinator(hass, pixoo, entry)
+    gallery_coordinator = PixooGalleryCoordinator(hass, pixoo, entry)
 
     # Fetch initial data
     await system_coordinator.async_config_entry_first_refresh()
@@ -174,6 +205,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "entry": entry,
     }
 
+    # Page Engine rotation (US2): entry-bound controller, started only when enabled in options.
+    rotation = RotationController(
+        hass=hass,
+        entry=entry,
+        pixoo=pixoo,
+        service_queue=service_queue,
+        device_size=device_size,
+    )
+    hass.data[DOMAIN][entry.entry_id]["rotation"] = rotation
+    await rotation.async_start()
+
     # Set up platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -191,12 +233,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         url = call.data["url"]
         entity_ids = call.data.get("entity_id")
 
-        # Download image
-        try:
-            image_data = await download_image(hass, url)
-        except Exception as err:
-            raise ServiceValidationError(f"Failed to download image: {err}") from err
-
         # Get target devices (fixed entity ID resolution)
         entries = _resolve_entry_ids(hass, entity_ids)
 
@@ -205,13 +241,18 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             data = hass.data[DOMAIN][entry.entry_id]
             pixoo: PixooAsync = data["pixoo"]
             service_queue: ServiceQueue = data["service_queue"]
+            device_size = entry.data.get(CONF_DEVICE_SIZE, 64)
 
             async def _execute():
                 try:
+                    # Download image with correct device size
+                    image_data = await download_image(hass, url, target_size=(device_size, device_size))
                     # Convert bytes to PIL Image, draw to buffer, then push
                     image = Image.open(BytesIO(image_data))
                     pixoo.draw_image(image, xy=(0, 0))
                     await pixoo.push()
+                except ServiceValidationError:
+                    raise
                 except Exception as err:
                     _LOGGER.error("Failed to display image on %s: %s", entry.data[CONF_HOST], err)
                     raise HomeAssistantError(f"Failed to display image: {err}") from err
@@ -224,6 +265,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         
         image_data_b64 = call.data.get("image_data")
         entity_ids = call.data.get("entity_id")
+
+        if not image_data_b64:
+            raise ServiceValidationError("image_data is required")
 
         # Decode base64 image data
         try:
@@ -253,29 +297,55 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             await service_queue.enqueue(_execute())
 
     async def handle_display_gif(call: ServiceCall) -> None:
-        """Handle display_gif service call."""
+        """Handle display_gif service call.
+        
+        Supports both static images and animated GIFs/WebP.
+        For animations, all frames are sent to the device.
+        """
         url = call.data["url"]
+        speed_ms = call.data.get("speed_ms")  # Optional frame duration override
         entity_ids = call.data.get("entity_id")
-
-        # Download GIF
-        try:
-            gif_data = await download_image(hass, url)
-        except Exception as err:
-            raise ServiceValidationError(f"Failed to download GIF: {err}") from err
 
         # Get target devices (fixed entity ID resolution)
         entries = _resolve_entry_ids(hass, entity_ids)
 
-        # Send to all target devices
+        # Queue per-device calls
         for entry in entries:
             data = hass.data[DOMAIN][entry.entry_id]
             pixoo: PixooAsync = data["pixoo"]
+            service_queue: ServiceQueue = data["service_queue"]
+            device_size = entry.data.get(CONF_DEVICE_SIZE, 64)
 
-            try:
-                await pixoo.display_gif_from_bytes(gif_data)
-            except Exception as err:
-                _LOGGER.error("Failed to display GIF on %s: %s", entry.data[CONF_HOST], err)
-                raise HomeAssistantError(f"Failed to display GIF: {err}") from err
+            async def _execute(
+                _pixoo: PixooAsync = pixoo,
+                _device_size: int = device_size,
+                _speed_ms: int | None = speed_ms,
+            ):
+                try:
+                    gif_data = await download_image(hass, url, target_size=None)  # Don't resize yet
+                    image = Image.open(BytesIO(gif_data))
+                    
+                    # Check if animated
+                    n_frames = getattr(image, "n_frames", 1)
+                    
+                    if n_frames > 1:
+                        # Animated - use push_animation
+                        frames_sent = await _pixoo.push_animation(image, speed_ms=_speed_ms)
+                        _LOGGER.debug("Displayed animation with %d frames", frames_sent)
+                    else:
+                        # Static - resize and display
+                        if image.size[0] != _device_size or image.size[1] != _device_size:
+                            image = image.resize((_device_size, _device_size), Image.Resampling.LANCZOS)
+                        _pixoo.draw_image(image, xy=(0, 0))
+                        await _pixoo.push()
+                        
+                except ServiceValidationError:
+                    raise
+                except Exception as err:
+                    _LOGGER.error("Failed to display GIF on %s: %s", entry.data[CONF_HOST], err)
+                    raise HomeAssistantError(f"Failed to display GIF: {err}") from err
+
+            await service_queue.enqueue(_execute())
 
     async def handle_display_text(call: ServiceCall) -> None:
         """Handle display_text service call."""
@@ -319,6 +389,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         for entry in entries:
             data = hass.data[DOMAIN][entry.entry_id]
             pixoo: PixooAsync = data["pixoo"]
+            device_size = entry.data.get(CONF_DEVICE_SIZE, 64)
 
             try:
                 # Use all configurable parameters for media player automation support
@@ -328,7 +399,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     color=(r, g, b),
                     identifier=text_id,
                     font=font,
-                    width=64,
+                    width=device_size,
                     movement_speed=speed,
                     direction=direction,
                 )
@@ -599,7 +670,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     _LOGGER.error("Failed to draw pixel: %s", err)
                     raise HomeAssistantError(f"Failed to draw pixel: {err}") from err
 
-            await service_queue.add(_execute())
+            await service_queue.enqueue(_execute())
 
     async def handle_draw_line(call: ServiceCall) -> None:
         """Handle draw_line service call."""
@@ -625,7 +696,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     _LOGGER.error("Failed to draw line: %s", err)
                     raise HomeAssistantError(f"Failed to draw line: {err}") from err
 
-            await service_queue.add(_execute())
+            await service_queue.enqueue(_execute())
 
     async def handle_draw_rectangle(call: ServiceCall) -> None:
         """Handle draw_rectangle service call."""
@@ -666,7 +737,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     _LOGGER.error("Failed to draw rectangle: %s", err)
                     raise HomeAssistantError(f"Failed to draw rectangle: {err}") from err
 
-            await service_queue.add(_execute())
+            await service_queue.enqueue(_execute())
 
     async def handle_draw_text_at_position(call: ServiceCall) -> None:
         """Handle draw_text_at_position service call."""
@@ -691,7 +762,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     _LOGGER.error("Failed to draw text: %s", err)
                     raise HomeAssistantError(f"Failed to draw text: {err}") from err
 
-            await service_queue.add(_execute())
+            await service_queue.enqueue(_execute())
 
     async def handle_fill_screen(call: ServiceCall) -> None:
         """Handle fill_screen service call."""
@@ -713,7 +784,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     _LOGGER.error("Failed to fill screen: %s", err)
                     raise HomeAssistantError(f"Failed to fill screen: {err}") from err
 
-            await service_queue.add(_execute())
+            await service_queue.enqueue(_execute())
 
     async def handle_clear_buffer(call: ServiceCall) -> None:
         """Handle clear_buffer service call."""
@@ -735,7 +806,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     _LOGGER.error("Failed to clear buffer: %s", err)
                     raise HomeAssistantError(f"Failed to clear buffer: {err}") from err
 
-            await service_queue.add(_execute())
+            await service_queue.enqueue(_execute())
 
     async def handle_push_buffer(call: ServiceCall) -> None:
         """Handle push_buffer service call."""
@@ -756,7 +827,450 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     _LOGGER.error("Failed to push buffer: %s", err)
                     raise HomeAssistantError(f"Failed to push buffer: {err}") from err
 
-            await service_queue.add(_execute())
+            await service_queue.enqueue(_execute())
+
+    async def handle_render_page(call: ServiceCall) -> None:
+        """Handle render_page (Page Engine) service call."""
+        page = call.data.get("page")
+        variables = call.data.get("variables")
+        allowlist_mode = call.data.get("allowlist_mode", ALLOWLIST_MODE_STRICT)
+        entity_ids = call.data.get("entity_id")
+
+        if page is None:
+            raise ServiceValidationError("page is required")
+
+        if allowlist_mode not in (ALLOWLIST_MODE_STRICT, ALLOWLIST_MODE_PERMISSIVE):
+            raise ServiceValidationError(
+                f"allowlist_mode must be '{ALLOWLIST_MODE_STRICT}' or '{ALLOWLIST_MODE_PERMISSIVE}'"
+            )
+
+        entries = _resolve_entry_ids(hass, entity_ids)
+        if not entries:
+            raise ServiceValidationError("No Pixoo devices matched target")
+
+        successes = 0
+        errors: list[Exception] = []
+
+        for entry in entries:
+            data = hass.data[DOMAIN].get(entry.entry_id)
+            if data is None:
+                errors.append(HomeAssistantError("Device entry not loaded"))
+                _LOGGER.error(
+                    "render_page failed (entry_id=%s, host=%s): entry not loaded",
+                    entry.entry_id,
+                    entry.data.get(CONF_HOST, "?"),
+                )
+                continue
+            pixoo: PixooAsync = data["pixoo"]
+            service_queue: ServiceQueue = data["service_queue"]
+            device_size = entry.data.get(CONF_DEVICE_SIZE, 64)
+
+            async def _execute(
+                *,
+                _pixoo: PixooAsync = pixoo,
+                _device_size: int = device_size,
+            ) -> None:
+                await render_page_engine_page(
+                    hass,
+                    _pixoo,
+                    page,
+                    device_size=_device_size,
+                    variables=variables,
+                    allowlist_mode=allowlist_mode,
+                    entry_id=entry.entry_id,
+                )
+
+            try:
+                await service_queue.enqueue(_execute())
+                successes += 1
+            except Exception as err:
+                errors.append(err)
+                _LOGGER.error(
+                    "render_page failed (entry_id=%s, host=%s): %s",
+                    entry.entry_id,
+                    entry.data.get(CONF_HOST, "?"),
+                    err,
+                )
+                continue
+
+        if successes == 0:
+            # All targets failed: map to HA service error semantics.
+            raise_service_error(errors[0] if errors else HomeAssistantError("No targets"), context="render_page")
+
+    async def handle_render_page_by_name(call: ServiceCall) -> None:
+        """Handle render_page_by_name service call - render a named page from YAML file."""
+        page_name = call.data.get("page_name")
+        pages_file = call.data.get("pages_file")  # Optional, defaults to pixoo_pages.yaml
+        variables = call.data.get("variables")
+        allowlist_mode = call.data.get("allowlist_mode", ALLOWLIST_MODE_STRICT)
+        entity_ids = call.data.get("entity_id")
+
+        if not page_name:
+            raise ServiceValidationError("page_name is required")
+
+        if allowlist_mode not in (ALLOWLIST_MODE_STRICT, ALLOWLIST_MODE_PERMISSIVE):
+            raise ServiceValidationError(
+                f"allowlist_mode must be '{ALLOWLIST_MODE_STRICT}' or '{ALLOWLIST_MODE_PERMISSIVE}'"
+            )
+
+        # Load the page definition by name from YAML
+        page = await load_page_by_name(hass, page_name, pages_file)
+
+        entries = _resolve_entry_ids(hass, entity_ids)
+        if not entries:
+            raise ServiceValidationError("No Pixoo devices matched target")
+
+        successes = 0
+        errors: list[Exception] = []
+
+        for entry in entries:
+            data = hass.data[DOMAIN].get(entry.entry_id)
+            if data is None:
+                errors.append(HomeAssistantError("Device entry not loaded"))
+                _LOGGER.error(
+                    "render_page_by_name failed (entry_id=%s, host=%s): entry not loaded",
+                    entry.entry_id,
+                    entry.data.get(CONF_HOST, "?"),
+                )
+                continue
+            pixoo: PixooAsync = data["pixoo"]
+            service_queue: ServiceQueue = data["service_queue"]
+            device_size = entry.data.get(CONF_DEVICE_SIZE, 64)
+
+            async def _execute(
+                *,
+                _pixoo: PixooAsync = pixoo,
+                _device_size: int = device_size,
+                _page: dict = page,
+            ) -> None:
+                await render_page_engine_page(
+                    hass,
+                    _pixoo,
+                    _page,
+                    device_size=_device_size,
+                    variables=variables,
+                    allowlist_mode=allowlist_mode,
+                    entry_id=entry.entry_id,
+                )
+
+            try:
+                await service_queue.enqueue(_execute())
+                successes += 1
+            except Exception as err:
+                errors.append(err)
+                _LOGGER.error(
+                    "render_page_by_name failed (entry_id=%s, host=%s): %s",
+                    entry.entry_id,
+                    entry.data.get(CONF_HOST, "?"),
+                    err,
+                )
+                continue
+
+        if successes == 0:
+            raise_service_error(
+                errors[0] if errors else HomeAssistantError("No targets"),
+                context="render_page_by_name"
+            )
+
+    async def handle_rotation_enable(call: ServiceCall) -> None:
+        """Enable/disable rotation for the selected Pixoo device(s)."""
+
+        enabled = call.data.get("enabled")
+        entity_ids = call.data.get("entity_id")
+
+        if not isinstance(enabled, bool):
+            raise ServiceValidationError("enabled is required and must be a boolean")
+
+        entries = _resolve_entry_ids(hass, entity_ids)
+        if not entries:
+            raise ServiceValidationError("No Pixoo devices matched target")
+
+        successes = 0
+        errors: list[Exception] = []
+
+        for entry in entries:
+            data = hass.data[DOMAIN].get(entry.entry_id)
+            if data is None:
+                continue
+
+            rotation: RotationController | None = data.get("rotation")
+
+            try:
+                # Persist to config entry options (best-effort)
+                opts = dict(entry.options)
+                rotation_opts = opts.get("page_engine_rotation")
+                if not isinstance(rotation_opts, dict):
+                    rotation_opts = {}
+                rotation_opts = dict(rotation_opts)
+                rotation_opts["enabled"] = enabled
+                opts["page_engine_rotation"] = rotation_opts
+                hass.config_entries.async_update_entry(entry, options=opts)
+
+                if rotation is not None:
+                    if enabled:
+                        await rotation.async_start()
+                    else:
+                        await rotation.async_stop()
+
+                successes += 1
+            except Exception as err:
+                errors.append(err)
+                _LOGGER.error(
+                    "rotation_enable failed on %s: %s",
+                    entry.data.get(CONF_HOST, entry.entry_id),
+                    err,
+                )
+                continue
+
+        if successes == 0:
+            raise_service_error(
+                errors[0] if errors else HomeAssistantError("No targets"),
+                context="rotation_enable",
+            )
+
+    async def handle_rotation_next(call: ServiceCall) -> None:
+        """Immediately advance rotation to the next active page."""
+
+        entity_ids = call.data.get("entity_id")
+        entries = _resolve_entry_ids(hass, entity_ids)
+        if not entries:
+            raise ServiceValidationError("No Pixoo devices matched target")
+
+        successes = 0
+        errors: list[Exception] = []
+
+        for entry in entries:
+            data = hass.data[DOMAIN].get(entry.entry_id)
+            if data is None:
+                continue
+
+            rotation: RotationController | None = data.get("rotation")
+            if rotation is None:
+                errors.append(HomeAssistantError("Rotation controller not available"))
+                continue
+
+            try:
+                await rotation.async_next()
+                successes += 1
+            except Exception as err:
+                errors.append(err)
+                _LOGGER.error(
+                    "rotation_next failed on %s: %s",
+                    entry.data.get(CONF_HOST, entry.entry_id),
+                    err,
+                )
+                continue
+
+        if successes == 0:
+            raise_service_error(
+                errors[0] if errors else HomeAssistantError("No targets"),
+                context="rotation_next",
+            )
+
+    async def handle_rotation_reload_pages(call: ServiceCall) -> None:
+        """Reload YAML-defined rotation pages (if configured)."""
+
+        entity_ids = call.data.get("entity_id")
+        entries = _resolve_entry_ids(hass, entity_ids)
+        if not entries:
+            raise ServiceValidationError("No Pixoo devices matched target")
+
+        successes = 0
+        errors: list[Exception] = []
+
+        for entry in entries:
+            data = hass.data[DOMAIN].get(entry.entry_id)
+            if data is None:
+                continue
+
+            rotation: RotationController | None = data.get("rotation")
+            if rotation is None:
+                errors.append(HomeAssistantError("Rotation controller not available"))
+                continue
+
+            try:
+                await rotation.async_reload_pages()
+                # If rotation is running, apply immediately by advancing once.
+                if rotation.running:
+                    await rotation.async_next()
+                successes += 1
+            except Exception as err:
+                errors.append(err)
+                _LOGGER.error(
+                    "rotation_reload_pages failed on %s: %s",
+                    entry.data.get(CONF_HOST, entry.entry_id),
+                    err,
+                )
+                continue
+
+        if successes == 0:
+            raise_service_error(
+                errors[0] if errors else HomeAssistantError("No targets"),
+                context="rotation_reload_pages",
+            )
+
+    async def handle_set_rotation_config(call: ServiceCall) -> None:
+        """Configure rotation settings (enabled, default_duration, pages_yaml_path, allowlist_mode)."""
+
+        entity_ids = call.data.get("entity_id")
+        entries = _resolve_entry_ids(hass, entity_ids)
+        if not entries:
+            raise ServiceValidationError("No Pixoo devices matched target")
+
+        # Extract optional config fields
+        enabled = call.data.get("enabled")
+        default_duration = call.data.get("default_duration")
+        pages_yaml_path = call.data.get("pages_yaml_path")
+        allowlist_mode = call.data.get("allowlist_mode")
+
+        # Validate types if provided
+        if enabled is not None and not isinstance(enabled, bool):
+            raise ServiceValidationError("enabled must be a boolean")
+        if default_duration is not None:
+            try:
+                default_duration = int(default_duration)
+                if default_duration < 1:
+                    raise ServiceValidationError("default_duration must be >= 1")
+            except (TypeError, ValueError):
+                raise ServiceValidationError("default_duration must be an integer")
+        if pages_yaml_path is not None and not isinstance(pages_yaml_path, str):
+            raise ServiceValidationError("pages_yaml_path must be a string")
+        if allowlist_mode is not None and allowlist_mode not in (ALLOWLIST_MODE_STRICT, ALLOWLIST_MODE_PERMISSIVE):
+            raise ServiceValidationError(
+                f"allowlist_mode must be '{ALLOWLIST_MODE_STRICT}' or '{ALLOWLIST_MODE_PERMISSIVE}'"
+            )
+
+        successes = 0
+        errors: list[Exception] = []
+
+        for entry in entries:
+            data = hass.data[DOMAIN].get(entry.entry_id)
+            if data is None:
+                continue
+
+            rotation: RotationController | None = data.get("rotation")
+
+            try:
+                # Build updated options
+                opts = dict(entry.options)
+                rotation_opts = opts.get("page_engine_rotation")
+                if not isinstance(rotation_opts, dict):
+                    rotation_opts = {}
+                rotation_opts = dict(rotation_opts)
+
+                if enabled is not None:
+                    rotation_opts["enabled"] = enabled
+                if default_duration is not None:
+                    rotation_opts["default_duration"] = default_duration
+                if pages_yaml_path is not None:
+                    rotation_opts["pages_yaml_path"] = pages_yaml_path
+                if allowlist_mode is not None:
+                    rotation_opts["allowlist_mode"] = allowlist_mode
+
+                opts["page_engine_rotation"] = rotation_opts
+                hass.config_entries.async_update_entry(entry, options=opts)
+
+                # Apply runtime changes if rotation controller exists
+                if rotation is not None:
+                    if default_duration is not None:
+                        rotation._default_duration = default_duration
+                    if pages_yaml_path is not None:
+                        rotation._yaml_path = pages_yaml_path
+                        await rotation.async_reload_pages()
+                    if allowlist_mode is not None:
+                        rotation._allowlist_mode = allowlist_mode
+                    # Handle enabled state change
+                    if enabled is not None:
+                        if enabled and not rotation.running:
+                            await rotation.async_start()
+                        elif not enabled and rotation.running:
+                            await rotation.async_stop()
+
+                successes += 1
+            except Exception as err:
+                errors.append(err)
+                _LOGGER.error(
+                    "set_rotation_config failed on %s: %s",
+                    entry.data.get(CONF_HOST, entry.entry_id),
+                    err,
+                )
+                continue
+
+        if successes == 0:
+            raise_service_error(
+                errors[0] if errors else HomeAssistantError("No targets"),
+                context="set_rotation_config",
+            )
+
+    async def handle_show_message(call: ServiceCall) -> None:
+        """Handle show_message (US3) service call."""
+
+        page = call.data.get("page")
+        duration = call.data.get("duration")
+        variables = call.data.get("variables")
+        allowlist_mode = call.data.get("allowlist_mode", ALLOWLIST_MODE_STRICT)
+        entity_ids = call.data.get("entity_id")
+
+        if page is None:
+            raise ServiceValidationError("page is required")
+
+        if duration is None:
+            raise ServiceValidationError("duration is required")
+
+        try:
+            duration_int = int(duration)
+        except (TypeError, ValueError):
+            raise ServiceValidationError("duration must be an integer")
+        if duration_int < 1:
+            raise ServiceValidationError("duration must be >= 1")
+
+        if variables is not None and not isinstance(variables, dict):
+            raise ServiceValidationError("variables must be an object")
+
+        if allowlist_mode not in (ALLOWLIST_MODE_STRICT, ALLOWLIST_MODE_PERMISSIVE):
+            raise ServiceValidationError(
+                f"allowlist_mode must be '{ALLOWLIST_MODE_STRICT}' or '{ALLOWLIST_MODE_PERMISSIVE}'"
+            )
+
+        entries = _resolve_entry_ids(hass, entity_ids)
+        if not entries:
+            raise ServiceValidationError("No Pixoo devices matched target")
+
+        successes = 0
+        errors: list[Exception] = []
+
+        for entry in entries:
+            data = hass.data[DOMAIN].get(entry.entry_id)
+            if data is None:
+                continue
+
+            rotation: RotationController | None = data.get("rotation")
+            if rotation is None:
+                errors.append(HomeAssistantError("Rotation controller not available"))
+                continue
+
+            try:
+                await rotation.async_show_message(
+                    page,
+                    duration=duration_int,
+                    variables=variables,
+                    allowlist_mode=allowlist_mode,
+                )
+                successes += 1
+            except Exception as err:
+                errors.append(err)
+                _LOGGER.error(
+                    "show_message failed on %s: %s",
+                    entry.data.get(CONF_HOST, entry.entry_id),
+                    err,
+                )
+                continue
+
+        if successes == 0:
+            raise_service_error(
+                errors[0] if errors else HomeAssistantError("No targets"),
+                context="show_message",
+            )
 
     # Register services (only once)
     if not hass.services.has_service(DOMAIN, SERVICE_DISPLAY_IMAGE):
@@ -800,6 +1314,28 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     if not hass.services.has_service(DOMAIN, SERVICE_PUSH_BUFFER):
         hass.services.async_register(DOMAIN, SERVICE_PUSH_BUFFER, handle_push_buffer)
 
+    # Page Engine services
+    if not hass.services.has_service(DOMAIN, SERVICE_RENDER_PAGE):
+        hass.services.async_register(DOMAIN, SERVICE_RENDER_PAGE, handle_render_page)
+
+    if not hass.services.has_service(DOMAIN, SERVICE_RENDER_PAGE_BY_NAME):
+        hass.services.async_register(DOMAIN, SERVICE_RENDER_PAGE_BY_NAME, handle_render_page_by_name)
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SHOW_MESSAGE):
+        hass.services.async_register(DOMAIN, SERVICE_SHOW_MESSAGE, handle_show_message)
+
+    # Optional rotation control services (US2, T042)
+    if not hass.services.has_service(DOMAIN, SERVICE_ROTATION_ENABLE):
+        hass.services.async_register(DOMAIN, SERVICE_ROTATION_ENABLE, handle_rotation_enable)
+    if not hass.services.has_service(DOMAIN, SERVICE_ROTATION_NEXT):
+        hass.services.async_register(DOMAIN, SERVICE_ROTATION_NEXT, handle_rotation_next)
+    if not hass.services.has_service(DOMAIN, SERVICE_ROTATION_RELOAD_PAGES):
+        hass.services.async_register(DOMAIN, SERVICE_ROTATION_RELOAD_PAGES, handle_rotation_reload_pages)
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_ROTATION_CONFIG):
+        hass.services.async_register(DOMAIN, SERVICE_SET_ROTATION_CONFIG, handle_set_rotation_config)
+
+    # show_message is implemented in US3.
+
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
@@ -809,6 +1345,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unload_ok:
         # Clean up
         data = hass.data[DOMAIN].pop(entry.entry_id)
+        rotation = data.get("rotation")
+        if rotation is not None:
+            try:
+                await rotation.async_stop()
+            except Exception as err:  # pragma: no cover
+                _LOGGER.debug("Failed to stop rotation for %s: %s", entry.entry_id, err)
         pixoo: PixooAsync = data["pixoo"]
         await pixoo.close()
 

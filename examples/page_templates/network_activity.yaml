@@ -1,0 +1,126 @@
+# Network Activity Graph Simulation
+#
+# Shows download/upload activity with line-based bar chart
+# Uses line components to create vertical bars for data visualization
+#
+# Variables:
+# - rx_rate: float (download rate in Mbit/s)
+# - tx_rate: float (upload rate in Mbit/s)
+# - max_rate: float (max rate for scaling, default 100 Mbit/s)
+
+page_type: components
+background: "{{ background }}"
+variables:
+  background: "#000000"
+  rx_rate: 45.5
+  tx_rate: 12.3
+  max_rate: 100
+
+  # Calculate bar heights (max 40px high)
+  rx_height: "{{ ((rx_rate | float / max_rate | float) * 40) | int if rx_rate | float <= max_rate | float else 40 }}"
+  tx_height: "{{ ((tx_rate | float / max_rate | float) * 40) | int if tx_rate | float <= max_rate | float else 40 }}"
+
+  # Calculate Y start positions (bottom is y=54)
+  rx_y_start: "{{ 54 - rx_height | int }}"
+  tx_y_start: "{{ 54 - tx_height | int }}"
+
+components:
+  # Title
+  - type: text
+    x: 32
+    y: 2
+    align: center
+    text: "Network"
+    color: "#FFFFFF"
+
+  # Graph baseline (horizontal line at bottom)
+  - type: line
+    start: [2, 54]
+    end: [62, 54]
+    color: "#555555"
+    thickness: 1
+
+  # Y-axis labels (rate indicators)
+  - type: text
+    x: 2
+    y: 14
+    text: "100"
+    color: "#444444"
+
+  - type: line
+    start: [12, 16]
+    end: [62, 16]
+    color: "#222222"
+    thickness: 1
+
+  - type: text
+    x: 2
+    y: 34
+    text: "50"
+    color: "#444444"
+
+  - type: line
+    start: [12, 36]
+    end: [62, 36]
+    color: "#222222"
+    thickness: 1
+
+  # Download bar (left side) - vertical line with thickness
+  - type: line
+    start: [20, "{{ rx_y_start }}"]
+    end: [20, 54]
+    color: "#00CC00"
+    thickness: 8
+    value: "{{ rx_rate }}"
+    color_thresholds:
+      - value: 25
+        color: "#00AA00"
+      - value: 50
+        color: "#00CC00"
+      - value: 75
+        color: "#00FF00"
+
+  # Upload bar (right side) - vertical line with thickness
+  - type: line
+    start: [44, "{{ tx_y_start }}"]
+    end: [44, 54]
+    color: "#FF6600"
+    thickness: 8
+    value: "{{ tx_rate }}"
+    color_thresholds:
+      - value: 10
+        color: "#AA4400"
+      - value: 25
+        color: "#FF6600"
+      - value: 50
+        color: "#FF8800"
+
+  # Labels below bars
+  - type: text
+    x: 20
+    y: 58
+    align: center
+    text: "RX"
+    color: "#00CC00"
+
+  - type: text
+    x: 44
+    y: 58
+    align: center
+    text: "TX"
+    color: "#FF6600"
+
+  # Values
+  - type: text
+    x: 20
+    y: "{{ (rx_y_start | int - 6) if rx_y_start | int > 10 else 10 }}"
+    align: center
+    text: "{{ rx_rate | round(1) }}"
+    color: "#FFFFFF"
+
+  - type: text
+    x: 44
+    y: "{{ (tx_y_start | int - 6) if tx_y_start | int > 10 else 10 }}"
+    align: center
+    text: "{{ tx_rate | round(1) }}"
+    color: "#FFFFFF"

@@ -1,0 +1,127 @@
+# Pi-hole Dashboard for Pixoo Display
+#
+# Shows Pi-hole blocking status, ads blocked, and statistics
+#
+# Required entities:
+#   - binary_sensor.pi_hole_status       (on/off status)
+#   - sensor.pi_hole_ads_blocked_today   (number of blocked ads)
+#   - sensor.pi_hole_ads_percentage_blocked_today (blocking percentage)
+#   - sensor.pi_hole_dns_queries_today   (total DNS queries)
+#
+# Add this page to your pixoo_pages.yaml or use as standalone template.
+# Reload via: pixoo.rotation_reload_pages
+
+- name: pihole_dashboard
+  page_type: components
+  duration: 15
+  background: "#000000"
+
+  variables:
+    # Status check
+    status: "{{ states('binary_sensor.pi_hole_status') }}"
+    status_icon: "{{ 'mdi:shield-check' if status == 'on' else 'mdi:shield-off' }}"
+    status_color: "{{ '#00FF00' if status == 'on' else '#FF0000' }}"
+
+    # Statistics
+    ads_blocked: "{{ states('sensor.pi_hole_ads_blocked_today') | int(0) }}"
+    ads_blocked_display: "{{ '{:,}'.format(ads_blocked | int).replace(',', '.') }}"
+    percentage: "{{ states('sensor.pi_hole_ads_percentage_blocked_today') | float(0) | round(1) }}"
+    queries_today: "{{ states('sensor.pi_hole_dns_queries_today') | int(0) }}"
+    queries_display: "{{ '{:,}'.format(queries_today | int).replace(',', '.') }}"
+
+    # Dynamic colors based on blocking rate
+    # Green: >20% blocked (good), Yellow: 10-20%, Red: <10%
+    percentage_color: "{{ '#00FF00' if percentage | float > 20 else '#FFAA00' if percentage | float > 10 else '#FF4444' }}"
+
+    # Progress bar width (max 56px, scales from 0-50% blocking rate)
+    bar_width: "{{ [[(percentage | float / 50 * 56) | int, 56] | min, 1] | max }}"
+
+  components:
+    # ═══════════════════════════════════════════════════════════
+    # Header Row
+    # ═══════════════════════════════════════════════════════════
+
+    # Pi-hole Logo Icon (top left, Pi-hole red color)
+    - type: icon
+      icon: mdi:pi-hole
+      x: 4
+      y: 2
+      size: 16
+      color: "#96060B"
+
+    # "Pi" text next to icon
+    - type: text
+      x: 22
+      y: 4
+      text: "Pi"
+      color: "#FFFFFF"
+      align: left
+
+    # Status Shield Icon (top right, green=active, red=disabled)
+    - type: icon
+      icon: "{{ status_icon }}"
+      x: 44
+      y: 2
+      size: 16
+      color: "{{ status_color }}"
+
+    # ═══════════════════════════════════════════════════════════
+    # Main Statistics
+    # ═══════════════════════════════════════════════════════════
+
+    # Blocked Ads Count (large, centered)
+    - type: text
+      x: 32
+      y: 20
+      text: "{{ ads_blocked_display }}"
+      color: "#FF4444"
+      align: center
+
+    # "blocked" label
+    - type: text
+      x: 32
+      y: 28
+      text: "blocked"
+      color: "#888888"
+      align: center
+
+    # ═══════════════════════════════════════════════════════════
+    # Progress Bar (blocking percentage)
+    # ═══════════════════════════════════════════════════════════
+
+    # Background bar (dark gray)
+    - type: rectangle
+      x: 4
+      y: 40
+      width: 56
+      height: 6
+      color: "#333333"
+      filled: true
+
+    # Filled bar (dynamic width based on percentage)
+    - type: rectangle
+      x: 4
+      y: 40
+      width: "{{ bar_width }}"
+      height: 6
+      color: "{{ percentage_color }}"
+      filled: true
+
+    # Percentage text below bar
+    - type: text
+      x: 32
+      y: 49
+      text: "{{ percentage }}% blocked"
+      color: "{{ percentage_color }}"
+      align: center
+
+    # ═══════════════════════════════════════════════════════════
+    # Footer: Total DNS queries
+    # ═══════════════════════════════════════════════════════════
+
+    - type: text
+      x: 32
+      y: 57
+      text: "{{ queries_display }} DNS"
+      color: "#666666"
+      align: center

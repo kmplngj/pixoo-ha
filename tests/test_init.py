@@ -40,7 +40,7 @@ async def test_unload_entry(hass: HomeAssistant, mock_pixoo, mock_config_entry) 
 async def test_setup_entry_connection_error(hass: HomeAssistant, mock_pixoo, mock_config_entry) -> None:
     """Test setup fails when connection fails."""
     mock_config_entry.add_to_hass(hass)
-    mock_pixoo.get_device_info.side_effect = Exception("Connection error")
+    mock_pixoo.get_all_channel_config.side_effect = Exception("Connection error")
     
     with patch("custom_components.pixoo.PixooAsync", return_value=mock_pixoo):
         assert not await hass.config_entries.async_setup(mock_config_entry.entry_id)

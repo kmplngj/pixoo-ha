@@ -10,6 +10,7 @@ from .pixooasync import PixooAsync
 from .pixooasync.models import DeviceInfo, NetworkStatus, SystemConfig, WeatherInfo, TimeInfo, TimerConfig, AlarmConfig, StopwatchConfig
 from .pixooasync.enums import Channel
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -33,6 +34,7 @@ class PixooDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self,
         hass: HomeAssistant,
         pixoo: PixooAsync,
+        config_entry: ConfigEntry,
         name: str,
         update_interval: timedelta | None,
     ) -> None:
@@ -40,6 +42,7 @@ class PixooDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         super().__init__(
             hass,
             _LOGGER,
+            config_entry=config_entry,
             name=name,
             update_interval=update_interval,
         )
@@ -53,11 +56,12 @@ class PixooDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 class PixooSystemCoordinator(PixooDataUpdateCoordinator):
     """Coordinator for system and network status (30s system, 60s network)."""
 
-    def __init__(self, hass: HomeAssistant, pixoo: PixooAsync) -> None:
+    def __init__(self, hass: HomeAssistant, pixoo: PixooAsync, config_entry: ConfigEntry) -> None:
         """Initialize system coordinator."""
         super().__init__(
             hass,
             pixoo,
+            config_entry,
             name=f"{DOMAIN}_system",
             update_interval=timedelta(seconds=UPDATE_INTERVAL_SYSTEM),
         )
@@ -79,6 +83,12 @@ class PixooSystemCoordinator(PixooDataUpdateCoordinator):
                 "hour_mode": system_config.hour_mode,
                 "screen_power": system_config.screen_power,
             }
+            
+            _LOGGER.debug(
+                "System config updated: brightness=%d, screen_power=%s",
+                system_config.brightness,
+                system_config.screen_power,
+            )
 
             # Fetch current channel (Channel/GetIndex API works!)
             channel_index: int = await self.pixoo.get_current_channel()
@@ -112,11 +122,12 @@ class PixooSystemCoordinator(PixooDataUpdateCoordinator):
 class PixooWeatherCoordinator(PixooDataUpdateCoordinator):
     """Coordinator for weather and time information (5 minute interval)."""
 
-    def __init__(self, hass: HomeAssistant, pixoo: PixooAsync) -> None:
+    def __init__(self, hass: HomeAssistant, pixoo: PixooAsync, config_entry: ConfigEntry) -> None:
         """Initialize weather coordinator."""
         super().__init__(
             hass,
             pixoo,
+            config_entry,
             name=f"{DOMAIN}_weather",
             update_interval=timedelta(seconds=UPDATE_INTERVAL_WEATHER),
         )
@@ -164,11 +175,12 @@ class PixooWeatherCoordinator(PixooDataUpdateCoordinator):
 class PixooGalleryCoordinator(PixooDataUpdateCoordinator):
     """Coordinator for gallery/animation list (on-demand updates)."""
 
-    def __init__(self, hass: HomeAssistant, pixoo: PixooAsync) -> None:
+    def __init__(self, hass: HomeAssistant, pixoo: PixooAsync, config_entry: ConfigEntry) -> None:
         """Initialize gallery coordinator."""
         super().__init__(
             hass,
             pixoo,
+            config_entry,
             name=f"{DOMAIN}_gallery",
             update_interval=timedelta(seconds=UPDATE_INTERVAL_GALLERY),
         )
