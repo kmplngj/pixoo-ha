@@ -1,0 +1,437 @@
+# Pixoo Page Engine Rotation
+# Reload via: pixoo.rotation_reload_pages
+#
+# Sensoren:
+#   - sensor.solarnet_power_photovoltaics (PV Produktion)
+#   - sensor.smartmeter_ip_real_power (Hausverbrauch)
+#   - sensor.byd_battery_box_premium_hv_state_of_charge (Batterie %)
+#   - sensor.solarnet_power_battery_charge (Batterieladung)
+#   - sensor.solarnet_power_battery_discharge (Batterieentladung)
+#
+# Media Player:
+#   - media_player.appletv
+#   - media_player.node
+#   - media_player.wohnen
+
+# ═══════════════════════════════════════════════════════════════
+# PV / Solar Seite mit Batterie-Fortschrittsbalken
+# ═══════════════════════════════════════════════════════════════
+- page_type: components
+  duration: 15
+  background: "#000000"
+  variables:
+    # Sensoren
+    pv_power: "{{ states('sensor.solarnet_power_photovoltaics') | float(0) | round(0) }}"
+    consumption: "{{ states('sensor.smartmeter_ip_real_power') | float(0) | round(0) }}"
+    battery_soc: "{{ states('sensor.byd_battery_box_premium_hv_state_of_charge') | float(0) | round(0) }}"
+    battery_charge: "{{ states('sensor.solarnet_power_battery_charge') | float(0) | round(0) }}"
+    battery_discharge: "{{ states('sensor.solarnet_power_battery_discharge') | float(0) | round(0) }}"
+    # Berechnete Werte
+    battery_flow: "{{ (battery_charge | float - battery_discharge | float) | round(0) }}"
+    time_now: "{{ now().strftime('%H:%M') }}"
+    # Batterie Progress Bar Breite (max 56px, 4px Rand links/rechts)
+    bar_width: "{{ (battery_soc | float / 100 * 56) | int }}"
+    # Farben
+    pv_color: "{{ '#FFB000' if pv_power | float > 100 else '#555555' }}"
+    battery_bar_color: "{{ '#00FF00' if battery_soc | float > 50 else '#FFAA00' if battery_soc | float > 20 else '#FF0000' }}"
+    battery_text_color: "{{ '#00FF00' if battery_flow | float > 0 else '#FF4444' if battery_flow | float < 0 else '#888888' }}"
+  components:
+    # Header: Zeit (oben rechts)
+    - type: text
+      x: 62
+      y: 2
+      align: right
+      text: "{{ time_now }}"
+      color: "#FFFFFF"
+
+    # Zeile 1: PV Produktion
+    - type: rectangle
+      x: 2
+      y: 2
+      width: 8
+      height: 8
+      color: "#FFB000"
+      filled: true
+    - type: text
+      x: 12
+      y: 3
+      text: "{{ pv_power }}W"
+      color: "{{ pv_color }}"
+
+    # Zeile 2: Batterie Füllstand (Progress Bar)
+    # Hintergrund (grau)
+    - type: rectangle
+      x: 4
+      y: 18
+      width: 56
+      height: 10
+      color: "#333333"
+      filled: true
+    # Füllstand (farbig) - Breite über Template
+    - type: rectangle
+      x: 4
+      y: 18
+      width: "{{ bar_width | int if bar_width | int > 0 else 1 }}"
+      height: 10
+      color: "{{ battery_bar_color }}"
+      filled: true
+    # Prozent-Text zentriert
+    - type: text
+      x: 32
+      y: 20
+      align: center
+      text: "{{ battery_soc }}%"
+      color: "#FFFFFF"
+
+    # Zeile 3: Batterie Lade/Entlade-Leistung
+    - type: text
+      x: 2
+      y: 34
+      text: "Bat:"
+      color: "#888888"
+    - type: text
+      x: 22
+      y: 34
+      text: "{{ battery_flow }}W"
+      color: "{{ battery_text_color }}"
+
+    # Zeile 4: Hausverbrauch
+    - type: text
+      x: 2
+      y: 48
+      text: "Haus:"
+      color: "#888888"
+    - type: text
+      x: 28
+      y: 48
+      text: "{{ consumption }}W"
+      color: "#4488FF"
+
+# ═══════════════════════════════════════════════════════════════
+# Now Playing - Apple TV
+# Wird nur angezeigt wenn Apple TV gerade abspielt
+# ═══════════════════════════════════════════════════════════════
+- name: apple_tv_now_playing
+  page_type: components
+  duration: 10
+  enabled: "{{ is_state('media_player.appletv', 'playing') }}"
+  background: "#000000"
+  variables:
+    # Ohne truncate - volle Länge für Scrolling
+    title: "{{ state_attr('media_player.appletv', 'media_title') | default('', true) }}"
+    artist: "{{ state_attr('media_player.appletv', 'media_artist') | default('', true) }}"
+    cover_url: "{{ state_attr('media_player.appletv', 'entity_picture') | default('') }}"
+    has_cover: "{{ state_attr('media_player.appletv', 'entity_picture') is not none }}"
+  components:
+    - type: image
+      x: 0
+      y: 0
+      source:
+        url: "{{ cover_url if has_cover else '' }}"
+    - type: rectangle
+      x: 0
+      y: 46
+      width: 64
+      height: 18
+      color: "#000000"
+      filled: true
+    # Titel mit Scrolling
+    - type: text
+      x: 2
+      y: 48
+      text: "{{ title }}"
+      color: "#FFFFFF"
+      scroll: true
+      scroll_speed: 40
+      text_width: 60
+    # Artist mit Scrolling
+    - type: text
+      x: 2
+      y: 56
+      text: "{{ artist }}"
+      color: "#AAAAAA"
+      scroll: true
+      scroll_speed: 40
+      text_width: 60
+# ═══════════════════════════════════════════════════════════════
+# Now Playing - Node (Sonos/Airplay)
+# Wird nur angezeigt wenn Node gerade abspielt
+# ═══════════════════════════════════════════════════════════════
+- name: node_now_playing
+  page_type: components
+  duration: 10
+  enabled: "{{ is_state('media_player.node', 'playing') }}"
+  background: "#000000"
+  variables:
+    title: "{{ state_attr('media_player.node', 'media_title') | default('', true) | truncate(14, true, '..') }}"
+    artist: "{{ state_attr('media_player.node', 'media_artist') | default('', true) | truncate(14, true, '..') }}"
+    cover_url: "{{ state_attr('media_player.node', 'entity_picture') | default('') }}"
+    has_cover: "{{ state_attr('media_player.node', 'entity_picture') is not none }}"
+  components:
+    - type: image
+      x: 0
+      y: 0
+      source:
+        url: "{{ cover_url if has_cover else '' }}"
+    - type: rectangle
+      x: 0
+      y: 46
+      width: 64
+      height: 18
+      color: "#000000"
+      filled: true
+    - type: text
+      x: 2
+      y: 48
+      text: "{{ title }}"
+      color: "#FFFFFF"
+    - type: text
+      x: 2
+      y: 56
+      text: "{{ artist }}"
+      color: "#AAAAAA"
+
+# ═══════════════════════════════════════════════════════════════
+# Now Playing - Wohnen
+# Wird nur angezeigt wenn Wohnen gerade abspielt
+# ═══════════════════════════════════════════════════════════════
+- name: wohnen_now_playing
+  page_type: components
+  duration: 10
+  enabled: "{{ is_state('media_player.wohnen', 'playing') }}"
+  background: "#000000"
+  variables:
+    title: "{{ state_attr('media_player.wohnen', 'media_title') | default('', true) | truncate(14, true, '..') }}"
+    artist: "{{ state_attr('media_player.wohnen', 'media_artist') | default('', true) | truncate(14, true, '..') }}"
+    cover_url: "{{ state_attr('media_player.wohnen', 'entity_picture') | default('') }}"
+    has_cover: "{{ state_attr('media_player.wohnen', 'entity_picture') is not none }}"
+  components:
+    - type: image
+      x: 0
+      y: 0
+      source:
+        url: "{{ cover_url if has_cover else '' }}"
+    - type: rectangle
+      x: 0
+      y: 46
+      width: 64
+      height: 18
+      color: "#000000"
+      filled: true
+    - type: text
+      x: 2
+      y: 48
+      text: "{{ title }}"
+      color: "#FFFFFF"
+    - type: text
+      x: 2
+      y: 56
+      text: "{{ artist }}"
+      color: "#AAAAAA"
+
+# ═══════════════════════════════════════════════════════════════
+# UniFi Network Dashboard
+# Zeigt WLAN/LAN Geräte, Durchsatz und Firmware Updates
+# ═══════════════════════════════════════════════════════════════
+- name: unifi_network_dashboard
+  page_type: components
+  duration: 15
+  background: "#000000"
+  variables:
+    wlan_clients: "{{ states('sensor.u6_pro_wlan_clients') | int(0) + states('sensor.u6_mesh_wlan_clients') | int(0) }}"
+    lan_clients: "{{ states.device_tracker | selectattr('state', 'eq', 'home') | selectattr('attributes.source_type', 'defined') | selectattr('attributes.source_type', 'eq', 'router') | list | count }}"
+    total_clients: "{{ wlan_clients | int + lan_clients | int }}"
+    updates_available: "{{ states.update | selectattr('state', 'eq', 'on') | selectattr('entity_id', 'search', 'unifi') | list | count }}"
+    update_color: "{{ '#FF8800' if updates_available | int > 0 else '#00AA00' }}"
+    update_icon: "{{ 'mdi:update' if updates_available | int > 0 else 'mdi:check-circle' }}"
+    rx_rate: "{{ states('sensor.udm_pro_rx') | float(0) | round(1) }}"
+    tx_rate: "{{ states('sensor.udm_pro_tx') | float(0) | round(1) }}"
+    wifi_color: "#2196F3"
+    lan_color: "#4CAF50"
+  components:
+    - type: icon
+      icon: mdi:access-point-network
+      x: 4
+      y: 2
+      size: 16
+      color: "#0099FF"
+    - type: text
+      x: 22
+      y: 4
+      text: "UniFi"
+      color: "#FFFFFF"
+      align: left
+    - type: icon
+      icon: "{{ update_icon }}"
+      x: 44
+      y: 2
+      size: 16
+      color: "{{ update_color }}"
+    - type: icon
+      icon: mdi:wifi
+      x: 4
+      y: 20
+      size: 12
+      color: "{{ wifi_color }}"
+    - type: text
+      x: 18
+      y: 21
+      text: "{{ wlan_clients }}"
+      color: "{{ wifi_color }}"
+    - type: text
+      x: 30
+      y: 21
+      text: "WLAN"
+      color: "#888888"
+    - type: icon
+      icon: mdi:ethernet
+      x: 4
+      y: 34
+      size: 12
+      color: "{{ lan_color }}"
+    - type: text
+      x: 18
+      y: 35
+      text: "{{ lan_clients }}"
+      color: "{{ lan_color }}"
+    - type: text
+      x: 30
+      y: 35
+      text: "LAN"
+      color: "#888888"
+    - type: icon
+      icon: mdi:arrow-down
+      x: 4
+      y: 50
+      size: 10
+      color: "#00CC00"
+    - type: text
+      x: 14
+      y: 51
+      text: "{{ rx_rate }}"
+      color: "#00CC00"
+    - type: icon
+      icon: mdi:arrow-up
+      x: 36
+      y: 50
+      size: 10
+      color: "#FF6600"
+    - type: text
+      x: 46
+      y: 51
+      text: "{{ tx_rate }}"
+      color: "#FF6600"
+
+# ═══════════════════════════════════════════════════════════════
+# Speedtest Dashboard
+# Zeigt Download/Upload mit Fortschrittsbalken
+# ═══════════════════════════════════════════════════════════════
+- name: speedtest_dashboard
+  page_type: components
+  duration: 15
+  background: "#000000"
+  variables:
+    download: "{{ states('sensor.speedtest_download') | float(0) | round(1) }}"
+    upload: "{{ states('sensor.speedtest_upload') | float(0) | round(1) }}"
+    ping: "{{ states('sensor.speedtest_ping') | float(0) | round(0) }}"
+    download_bar: "{{ [[((download | float) / 1000 * 56) | int, 56] | min, 1] | max }}"
+    upload_bar: "{{ [[((upload | float) / 500 * 56) | int, 56] | min, 1] | max }}"
+    download_color: "{{ '#00FF00' if download | float > 500 else '#FFAA00' if download | float > 100 else '#FF4444' }}"
+    upload_color: "{{ '#00FF00' if upload | float > 100 else '#FFAA00' if upload | float > 50 else '#FF4444' }}"
+    ping_color: "{{ '#00FF00' if ping | float < 20 else '#FFAA00' if ping | float < 50 else '#FF4444' }}"
+  components:
+    - type: icon
+      icon: mdi:speedometer
+      x: 4
+      y: 2
+      size: 16
+      color: "#8E44AD"
+    - type: text
+      x: 22
+      y: 4
+      text: "Speed"
+      color: "#FFFFFF"
+      align: left
+    - type: text
+      x: 60
+      y: 4
+      text: "{{ ping }}ms"
+      color: "{{ ping_color }}"
+      align: right
+    - type: icon
+      icon: mdi:download
+      x: 4
+      y: 20
+      size: 12
+      color: "#00CC00"
+    - type: text
+      x: 18
+      y: 20
+      text: "{{ download }}"
+      color: "{{ download_color }}"
+    - type: text
+      x: 60
+      y: 20
+      text: "Mb/s"
+      color: "#888888"
+      align: right
+    - type: rectangle
+      x: 4
+      y: 32
+      width: 56
+      height: 4
+      color: "#333333"
+      filled: true
+    - type: rectangle
+      x: 4
+      y: 32
+      width: "{{ download_bar }}"
+      height: 4
+      color: "{{ download_color }}"
+      filled: true
+    - type: icon
+      icon: mdi:upload
+      x: 4
+      y: 40
+      size: 12
+      color: "#FF6600"
+    - type: text
+      x: 18
+      y: 40
+      text: "{{ upload }}"
+      color: "{{ upload_color }}"
+    - type: text
+      x: 60
+      y: 40
+      text: "Mb/s"
+      color: "#888888"
+      align: right
+    - type: rectangle
+      x: 4
+      y: 52
+      width: 56
+      height: 4
+      color: "#333333"
+      filled: true
+    - type: rectangle
+      x: 4
+      y: 52
+      width: "{{ upload_bar }}"
+      height: 4
+      color: "{{ upload_color }}"
+      filled: true
+    - type: text
+      x: 32
+      y: 58
+      text: "{{ states.sensor.speedtest_download.last_changed.strftime('%H:%M') if states.sensor.speedtest_download.last_changed else '--:--' }}"
+      color: "#666666"
+      align: center
+
+# ═══════════════════════════════════════════════════════════════
+# Fallback: Native Pixoo Clock
+# Wird immer angezeigt (kein enabled-Filter)
+# ═══════════════════════════════════════════════════════════════
+- name: native_pixoo_cloud
+  page_type: channel
+  duration: 120
+  channel_name: cloud

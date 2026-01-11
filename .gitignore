@@ -72,3 +72,9 @@ secrets.yaml
 *.tmp
 *.bak
 *.swp
+
+# Local-only debug / deprecated preview artifacts (do not commit)
+/test_svg_render.py
+/custom_components/pixoo/camera.py
+/tests/test_camera.py
+/examples/preview_camera_dashboard.yaml

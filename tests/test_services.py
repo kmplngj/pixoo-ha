@@ -1,5 +1,6 @@
 """Test Pixoo services."""
 
+import base64
 from unittest.mock import patch, AsyncMock
 
 import pytest
@@ -25,16 +26,20 @@ async def test_display_image_service(hass: HomeAssistant, config_entry, mock_pix
         assert await hass.config_entries.async_setup(config_entry.entry_id)
         await hass.async_block_till_done()
     
-    # Mock download_image
-    with patch("custom_components.pixoo.download_image", return_value=b"fake_image_data"):
+    # Mock download_image with a valid 1x1 PNG
+    png_1x1 = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMB/6X+R5cAAAAASUVORK5CYII="
+    )
+    with patch("custom_components.pixoo.download_image", return_value=png_1x1):
         await hass.services.async_call(
             DOMAIN,
             SERVICE_DISPLAY_IMAGE,
             {"url": "http://example.com/image.jpg"},
             blocking=True,
         )
-    
-    mock_pixoo.display_image_from_bytes.assert_called_once_with(b"fake_image_data")
+
+    assert mock_pixoo.draw_image.call_count == 1
+    mock_pixoo.push.assert_awaited_once()
 
 
 async def test_display_image_service_invalid_url(
@@ -47,10 +52,10 @@ async def test_display_image_service_invalid_url(
         assert await hass.config_entries.async_setup(config_entry.entry_id)
         await hass.async_block_till_done()
     
-    # Mock download_image to raise exception
+    # Mock download_image to raise a validation error
     with patch(
         "custom_components.pixoo.download_image",
-        side_effect=ValueError("Invalid URL"),
+        side_effect=ServiceValidationError("Invalid URL"),
     ):
         with pytest.raises(ServiceValidationError):
             await hass.services.async_call(
@@ -69,16 +74,20 @@ async def test_display_gif_service(hass: HomeAssistant, config_entry, mock_pixoo
         assert await hass.config_entries.async_setup(config_entry.entry_id)
         await hass.async_block_till_done()
     
-    # Mock download_image
-    with patch("custom_components.pixoo.download_image", return_value=b"fake_gif_data"):
+    # Mock download_image with a valid 1x1 GIF
+    gif_1x1 = base64.b64decode(
+        "R0lGODdhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
+    )
+    with patch("custom_components.pixoo.download_image", return_value=gif_1x1):
         await hass.services.async_call(
             DOMAIN,
             SERVICE_DISPLAY_GIF,
             {"url": "http://example.com/animation.gif"},
             blocking=True,
         )
-    
-    mock_pixoo.display_gif_from_bytes.assert_called_once_with(b"fake_gif_data")
+
+    assert mock_pixoo.draw_image.call_count == 1
+    mock_pixoo.push.assert_awaited_once()
 
 
 async def test_display_text_service(hass: HomeAssistant, config_entry, mock_pixoo) -> None:
@@ -97,12 +106,17 @@ async def test_display_text_service(hass: HomeAssistant, config_entry, mock_pixo
     )
     
     # Check that send_text was called with correct parameters
-    from pixooasync.enums import TextScrollDirection
-    
+    from custom_components.pixoo.pixooasync.enums import TextScrollDirection
+
     mock_pixoo.send_text.assert_called_once_with(
-        "Hello, World!",
-        (255, 255, 255),  # Default white color
-        TextScrollDirection.LEFT,  # Default direction
+        text="Hello, World!",
+        xy=(0, 0),
+        color=(255, 255, 255),  # Default white color
+        identifier=1,
+        font=2,
+        width=64,
+        movement_speed=0,
+        direction=TextScrollDirection.LEFT,
     )
 
 
@@ -127,12 +141,17 @@ async def test_display_text_service_with_color(
         blocking=True,
     )
     
-    from pixooasync.enums import TextScrollDirection
-    
+    from custom_components.pixoo.pixooasync.enums import TextScrollDirection
+
     mock_pixoo.send_text.assert_called_once_with(
-        "Red Text",
-        (255, 0, 0),  # Red color
-        TextScrollDirection.RIGHT,
+        text="Red Text",
+        xy=(0, 0),
+        color=(255, 0, 0),  # Red color
+        identifier=1,
+        font=2,
+        width=64,
+        movement_speed=0,
+        direction=TextScrollDirection.RIGHT,
     )
 
 
@@ -169,8 +188,9 @@ async def test_clear_display_service(hass: HomeAssistant, config_entry, mock_pix
         {},
         blocking=True,
     )
-    
-    mock_pixoo.clear_display.assert_called_once()
+
+    mock_pixoo.clear.assert_called_once()
+    mock_pixoo.push.assert_awaited_once()
 
 
 async def test_service_device_error(hass: HomeAssistant, config_entry, mock_pixoo) -> None:
@@ -178,7 +198,7 @@ async def test_service_device_error(hass: HomeAssistant, config_entry, mock_pixo
     config_entry.add_to_hass(hass)
     
     # Make the mock raise an exception
-    mock_pixoo.clear_display = AsyncMock(side_effect=Exception("Device offline"))
+    mock_pixoo.push = AsyncMock(side_effect=Exception("Device offline"))
     
     with patch("custom_components.pixoo.PixooAsync", return_value=mock_pixoo):
         assert await hass.config_entries.async_setup(config_entry.entry_id)
@@ -211,7 +231,7 @@ async def test_play_buzzer_service(hass: HomeAssistant, config_entry, mock_pixoo
     )
     
     # Should use default values
-    mock_pixoo.play_buzzer.assert_called_once_with(active_ms=500, off_ms=500, count=1)
+    mock_pixoo.play_buzzer.assert_called_once_with(active_time=500, off_time=500, total_time=1000)
 
 
 async def test_play_buzzer_service_custom_params(
@@ -237,4 +257,4 @@ async def test_play_buzzer_service_custom_params(
         blocking=True,
     )
     
-    mock_pixoo.play_buzzer.assert_called_once_with(active_ms=1000, off_ms=200, count=3)
+    mock_pixoo.play_buzzer.assert_called_once_with(active_time=1000, off_time=200, total_time=3600)

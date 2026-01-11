@@ -63,6 +63,15 @@ SERVICE_LOAD_IMAGE: Final = "load_image"
 SERVICE_LOAD_FOLDER: Final = "load_folder"
 SERVICE_LOAD_PLAYLIST: Final = "load_playlist"
 
+# Service names - Page Engine
+SERVICE_RENDER_PAGE: Final = "render_page"
+SERVICE_RENDER_PAGE_BY_NAME: Final = "render_page_by_name"
+SERVICE_SHOW_MESSAGE: Final = "show_message"
+SERVICE_ROTATION_ENABLE: Final = "rotation_enable"
+SERVICE_ROTATION_NEXT: Final = "rotation_next"
+SERVICE_ROTATION_RELOAD_PAGES: Final = "rotation_reload_pages"
+SERVICE_SET_ROTATION_CONFIG: Final = "set_rotation_config"
+
 # Attribute names
 ATTR_URL: Final = "url"
 ATTR_TEXT: Final = "text"

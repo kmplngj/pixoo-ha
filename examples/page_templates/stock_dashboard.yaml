@@ -1,0 +1,239 @@
+# Stock Market Dashboard Example
+# Displays stock prices and daily changes with color-coded indicators
+#
+# Requirements:
+#   - Yahoo Finance integration with stock sensors
+#   - Example sensors: sensor.yahoofinance_aapl, sensor.yahoofinance_nvda, etc.
+#
+# This page displays:
+#   - Multiple stocks in compact grid layout
+#   - Current price and % change
+#   - Green for gains, red for losses
+#   - Up/down arrow indicators
+#   - S&P 500 index as market indicator
+#
+# Template Variables:
+#   - stock1_sensor: First stock sensor (default: sensor.yahoofinance_aapl)
+#   - stock2_sensor: Second stock sensor (default: sensor.yahoofinance_nvda)
+#   - stock3_sensor: Third stock sensor (default: sensor.yahoofinance_asml)
+#   - stock4_sensor: Fourth stock sensor (default: sensor.yahoofinance_mu)
+#   - index_sensor: Market index (default: sensor.yahoofinance_gspc)
+#   - currency_sensor: Currency pair (default: sensor.yahoofinance_usdeur_x)
+
+page_type: components
+background: "#000000"
+variables:
+  # Sensor configurations
+  stock1_sensor: "sensor.yahoofinance_aapl"
+  stock2_sensor: "sensor.yahoofinance_nvda"
+  stock3_sensor: "sensor.yahoofinance_asml"
+  stock4_sensor: "sensor.yahoofinance_mu"
+  index_sensor: "sensor.yahoofinance_gspc"
+  currency_sensor: "sensor.yahoofinance_usdeur_x"
+
+  # Stock 1 (Top Left) - AAPL
+  stock1_price: "{{ states(stock1_sensor) | float(0) | round(2) }}"
+  stock1_change: "{{ state_attr(stock1_sensor, 'regularMarketChangePercent') | float(0) | round(2) }}"
+  stock1_symbol: "{{ state_attr(stock1_sensor, 'symbol') | default('AAPL', true) }}"
+  stock1_color: "{{ '#00FF00' if stock1_change | float >= 0 else '#FF0000' }}"
+  stock1_arrow: "{{ '↑' if stock1_change | float >= 0 else '↓' }}"
+
+  # Stock 2 (Top Right) - NVDA
+  stock2_price: "{{ states(stock2_sensor) | float(0) | round(2) }}"
+  stock2_change: "{{ state_attr(stock2_sensor, 'regularMarketChangePercent') | float(0) | round(2) }}"
+  stock2_symbol: "{{ state_attr(stock2_sensor, 'symbol') | default('NVDA', true) }}"
+  stock2_color: "{{ '#00FF00' if stock2_change | float >= 0 else '#FF0000' }}"
+  stock2_arrow: "{{ '↑' if stock2_change | float >= 0 else '↓' }}"
+
+  # Stock 3 (Mid Left) - ASML
+  stock3_price: "{{ states(stock3_sensor) | float(0) | round(2) }}"
+  stock3_change: "{{ state_attr(stock3_sensor, 'regularMarketChangePercent') | float(0) | round(2) }}"
+  stock3_symbol: "{{ state_attr(stock3_sensor, 'symbol') | default('ASML', true) }}"
+  stock3_color: "{{ '#00FF00' if stock3_change | float >= 0 else '#FF0000' }}"
+  stock3_arrow: "{{ '↑' if stock3_change | float >= 0 else '↓' }}"
+
+  # Stock 4 (Mid Right) - MU
+  stock4_price: "{{ states(stock4_sensor) | float(0) | round(2) }}"
+  stock4_change: "{{ state_attr(stock4_sensor, 'regularMarketChangePercent') | float(0) | round(2) }}"
+  stock4_symbol: "{{ state_attr(stock4_sensor, 'symbol') | default('MU', true) }}"
+  stock4_color: "{{ '#00FF00' if stock4_change | float >= 0 else '#FF0000' }}"
+  stock4_arrow: "{{ '↑' if stock4_change | float >= 0 else '↓' }}"
+
+  # Market Index (S&P 500) - Header
+  index_value: "{{ states(index_sensor) | float(0) | round(2) }}"
+  index_change: "{{ state_attr(index_sensor, 'regularMarketChangePercent') | float(0) | round(2) }}"
+  index_color: "{{ '#00FF00' if index_change | float >= 0 else '#FF0000' }}"
+  index_arrow: "{{ '↑' if index_change | float >= 0 else '↓' }}"
+
+  # Currency (USD/EUR) - Footer
+  currency_rate: "{{ states(currency_sensor) | float(0) | round(4) }}"
+  currency_change: "{{ state_attr(currency_sensor, 'regularMarketChangePercent') | float(0) | round(2) }}"
+  currency_color: "{{ '#00FF00' if currency_change | float >= 0 else '#FF0000' }}"
+
+components:
+  # ═══════════════════════════════════════════════════════════════
+  # Header: S&P 500 Index
+  # ═══════════════════════════════════════════════════════════════
+  - type: text
+    x: 2
+    y: 2
+    text: "S&P"
+    color: "#FFD700"
+    align: left
+
+  - type: text
+    x: 20
+    y: 2
+    text: "{{ index_value }}"
+    color: "#FFFFFF"
+    align: left
+
+  - type: text
+    x: 50
+    y: 2
+    text: "{{ index_arrow }}{{ index_change }}%"
+    color: "{{ index_color }}"
+    align: left
+
+  # Divider line
+  - type: line
+    start: [2, 10]
+    end: [62, 10]
+    color: "#333333"
+    thickness: 1
+
+  # ═══════════════════════════════════════════════════════════════
+  # Stock Grid - 2x2 Layout
+  # ═══════════════════════════════════════════════════════════════
+
+  # Stock 1: Top Left (AAPL)
+  - type: text
+    x: 2
+    y: 13
+    text: "{{ stock1_symbol }}"
+    color: "#888888"
+    align: left
+
+  - type: text
+    x: 2
+    y: 19
+    text: "${{ stock1_price }}"
+    color: "#FFFFFF"
+    align: left
+
+  - type: text
+    x: 2
+    y: 25
+    text: "{{ stock1_arrow }}{{ stock1_change }}%"
+    color: "{{ stock1_color }}"
+    align: left
+
+  # Stock 2: Top Right (NVDA)
+  - type: text
+    x: 34
+    y: 13
+    text: "{{ stock2_symbol }}"
+    color: "#888888"
+    align: left
+
+  - type: text
+    x: 34
+    y: 19
+    text: "${{ stock2_price }}"
+    color: "#FFFFFF"
+    align: left
+
+  - type: text
+    x: 34
+    y: 25
+    text: "{{ stock2_arrow }}{{ stock2_change }}%"
+    color: "{{ stock2_color }}"
+    align: left
+
+  # Divider line (horizontal)
+  - type: line
+    start: [2, 30]
+    end: [62, 30]
+    color: "#222222"
+    thickness: 1
+
+  # Stock 3: Bottom Left (ASML)
+  - type: text
+    x: 2
+    y: 33
+    text: "{{ stock3_symbol }}"
+    color: "#888888"
+    align: left
+
+  - type: text
+    x: 2
+    y: 39
+    text: "${{ stock3_price }}"
+    color: "#FFFFFF"
+    align: left
+
+  - type: text
+    x: 2
+    y: 45
+    text: "{{ stock3_arrow }}{{ stock3_change }}%"
+    color: "{{ stock3_color }}"
+    align: left
+
+  # Stock 4: Bottom Right (MU)
+  - type: text
+    x: 34
+    y: 33
+    text: "{{ stock4_symbol }}"
+    color: "#888888"
+    align: left
+
+  - type: text
+    x: 34
+    y: 39
+    text: "${{ stock4_price }}"
+    color: "#FFFFFF"
+    align: left
+
+  - type: text
+    x: 34
+    y: 45
+    text: "{{ stock4_arrow }}{{ stock4_change }}%"
+    color: "{{ stock4_color }}"
+    align: left
+
+  # Vertical divider
+  - type: line
+    start: [32, 13]
+    end: [32, 48]
+    color: "#222222"
+    thickness: 1
+
+  # ═══════════════════════════════════════════════════════════════
+  # Footer: USD/EUR Currency
+  # ═══════════════════════════════════════════════════════════════
+  - type: line
+    start: [2, 52]
+    end: [62, 52]
+    color: "#333333"
+    thickness: 1
+
+  - type: text
+    x: 2
+    y: 55
+    text: "USD/EUR"
+    color: "#888888"
+    align: left
+
+  - type: text
+    x: 32
+    y: 55
+    text: "{{ currency_rate }}"
+    color: "#FFFFFF"
+    align: left
+
+  - type: text
+    x: 54
+    y: 55
+    text: "{{ currency_change }}%"
+    color: "{{ currency_color }}"
+    align: right

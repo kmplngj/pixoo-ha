@@ -1,0 +1,208 @@
+# Battery Gauge with Circular Progress Indicator
+#
+# Shows battery level with large circle and progress arc simulation
+# Uses overlapping circles to create arc-like visual effect
+#
+# Variables:
+# - title: string (optional)
+# - battery_level: float 0..100 (required)
+# - battery_entity: entity_id for threshold coloring (optional)
+
+page_type: components
+background: "{{ background }}"
+variables:
+  background: "#000000"
+  title: "Battery"
+  battery_level: 50
+  battery_entity: ""
+
+components:
+  # Title
+  - type: text
+    x: 32
+    y: 4
+    align: center
+    text: "{{ title }}"
+    color: "#FFFFFF"
+
+  # Outer circle (background ring)
+  - type: circle
+    center: [32, 38]
+    radius: 20
+    color: "#333333"
+    filled: false
+    thickness: 3
+
+  # Battery icon in center
+  - type: icon
+    icon: mdi:battery
+    x: 24
+    y: 30
+    size: 16
+    color: "#FFFFFF"
+    value: "{{ battery_entity }}"
+    color_thresholds:
+      - value: 20
+        color: "#FF0000"
+      - value: 50
+        color: "#FFAA00"
+      - value: 100
+        color: "#00FF00"
+
+  # Percentage text
+  - type: text
+    x: 32
+    y: 52
+    align: center
+    text: "{{ battery_level | int }}%"
+    color: "#FFFFFF"
+
+  # Progress indicator circles (12 segments for 360° coverage)
+  # Each circle represents 30° (360/12)
+  # Show circles based on battery_level percentage
+
+  # 12 o'clock (0°) - shows at 8.33%+
+  - type: circle
+    center: [32, 18]
+    radius: 2
+    color: "#00FF00"
+    filled: true
+    value: "{{ battery_level }}"
+    color_thresholds:
+      - value: "{{ 8.33 if battery_level >= 8.33 else 999 }}"
+        color: "#FF0000"
+      - value: "{{ 50 if battery_level >= 50 else 999 }}"
+        color: "#FFAA00"
+      - value: "{{ 100 if battery_level >= 100 else 999 }}"
+        color: "#00FF00"
+
+  # 1 o'clock (30°) - shows at 16.66%+
+  - type: circle
+    center: [41, 21]
+    radius: 2
+    color: "{{ '#00FF00' if battery_level >= 16.66 else '#222222' }}"
+    filled: true
+    value: "{{ battery_level }}"
+    color_thresholds:
+      - value: "{{ 16.66 if battery_level >= 16.66 else 999 }}"
+        color: "#FF0000"
+      - value: "{{ 50 if battery_level >= 50 else 999 }}"
+        color: "#FFAA00"
+      - value: "{{ 100 if battery_level >= 100 else 999 }}"
+        color: "#00FF00"
+
+  # 2 o'clock (60°) - shows at 25%+
+  - type: circle
+    center: [49, 28]
+    radius: 2
+    color: "{{ '#00FF00' if battery_level >= 25 else '#222222' }}"
+    filled: true
+    value: "{{ battery_level }}"
+    color_thresholds:
+      - value: "{{ 25 if battery_level >= 25 else 999 }}"
+        color: "#FF0000"
+      - value: "{{ 50 if battery_level >= 50 else 999 }}"
+        color: "#FFAA00"
+      - value: "{{ 100 if battery_level >= 100 else 999 }}"
+        color: "#00FF00"
+
+  # 3 o'clock (90°) - shows at 33.33%+
+  - type: circle
+    center: [52, 38]
+    radius: 2
+    color: "{{ '#00FF00' if battery_level >= 33.33 else '#222222' }}"
+    filled: true
+    value: "{{ battery_level }}"
+    color_thresholds:
+      - value: "{{ 33.33 if battery_level >= 33.33 else 999 }}"
+        color: "#FF0000"
+      - value: "{{ 50 if battery_level >= 50 else 999 }}"
+        color: "#FFAA00"
+      - value: "{{ 100 if battery_level >= 100 else 999 }}"
+        color: "#00FF00"
+
+  # 4 o'clock (120°) - shows at 41.66%+
+  - type: circle
+    center: [49, 48]
+    radius: 2
+    color: "{{ '#FFAA00' if battery_level >= 41.66 else '#222222' }}"
+    filled: true
+    value: "{{ battery_level }}"
+    color_thresholds:
+      - value: "{{ 50 if battery_level >= 50 else 999 }}"
+        color: "#FFAA00"
+      - value: "{{ 100 if battery_level >= 100 else 999 }}"
+        color: "#00FF00"
+
+  # 5 o'clock (150°) - shows at 50%+
+  - type: circle
+    center: [41, 55]
+    radius: 2
+    color: "{{ '#FFAA00' if battery_level >= 50 else '#222222' }}"
+    filled: true
+    value: "{{ battery_level }}"
+    color_thresholds:
+      - value: "{{ 50 if battery_level >= 50 else 999 }}"
+        color: "#FFAA00"
+      - value: "{{ 100 if battery_level >= 100 else 999 }}"
+        color: "#00FF00"
+
+  # 6 o'clock (180°) - shows at 58.33%+
+  - type: circle
+    center: [32, 58]
+    radius: 2
+    color: "{{ '#FFAA00' if battery_level >= 58.33 else '#222222' }}"
+    filled: true
+    value: "{{ battery_level }}"
+    color_thresholds:
+      - value: "{{ 58.33 if battery_level >= 58.33 else 999 }}"
+        color: "#FFAA00"
+      - value: "{{ 100 if battery_level >= 100 else 999 }}"
+        color: "#00FF00"
+
+  # 7 o'clock (210°) - shows at 66.66%+
+  - type: circle
+    center: [23, 55]
+    radius: 2
+    color: "{{ '#FFAA00' if battery_level >= 66.66 else '#222222' }}"
+    filled: true
+    value: "{{ battery_level }}"
+    color_thresholds:
+      - value: "{{ 66.66 if battery_level >= 66.66 else 999 }}"
+        color: "#FFAA00"
+      - value: "{{ 100 if battery_level >= 100 else 999 }}"
+        color: "#00FF00"
+
+  # 8 o'clock (240°) - shows at 75%+
+  - type: circle
+    center: [15, 48]
+    radius: 2
+    color: "{{ '#FFAA00' if battery_level >= 75 else '#222222' }}"
+    filled: true
+    value: "{{ battery_level }}"
+    color_thresholds:
+      - value: "{{ 75 if battery_level >= 75 else 999 }}"
+        color: "#FFAA00"
+      - value: "{{ 100 if battery_level >= 100 else 999 }}"
+        color: "#00FF00"
+
+  # 9 o'clock (270°) - shows at 83.33%+
+  - type: circle
+    center: [12, 38]
+    radius: 2
+    color: "{{ '#00FF00' if battery_level >= 83.33 else '#222222' }}"
+    filled: true
+
+  # 10 o'clock (300°) - shows at 91.66%+
+  - type: circle
+    center: [15, 28]
+    radius: 2
+    color: "{{ '#00FF00' if battery_level >= 91.66 else '#222222' }}"
+    filled: true
+
+  # 11 o'clock (330°) - shows at 100%
+  - type: circle
+    center: [23, 21]
+    radius: 2
+    color: "{{ '#00FF00' if battery_level >= 100 else '#222222' }}"
+    filled: true

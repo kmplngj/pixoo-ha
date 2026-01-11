@@ -1,0 +1,176 @@
+# Compass Navigation Display
+#
+# Shows compass rose with directional arrow and optional value gauge
+# Perfect for wind direction, GPS heading, or navigation displays
+#
+# Variables:
+# - direction: float 0-360 (bearing in degrees, 0=North, clockwise)
+# - value: float (optional, for gauge display)
+# - value_label: string (optional, label for value)
+# - value_unit: string (optional, unit for value)
+
+page_type: components
+background: "{{ background }}"
+variables:
+  background: "#000000"
+  direction: 45 # NE
+  value: 15.5 # e.g., wind speed
+  value_label: "Wind"
+  value_unit: "km/h"
+  title: "Compass"
+
+components:
+  # Title
+  - type: text
+    x: 32
+    y: 2
+    align: center
+    text: "{{ title }}"
+    color: "#FFFFFF"
+
+  # ══════════════════════════════════════════════════════
+  # Compass Rose (concentric circles + cardinal markers)
+  # ══════════════════════════════════════════════════════
+
+  # Outer circle
+  - type: circle
+    center: [32, 36]
+    radius: 22
+    color: "#336699"
+    filled: false
+    thickness: 2
+
+  # Middle circle
+  - type: circle
+    center: [32, 36]
+    radius: 16
+    color: "#446688"
+    filled: false
+    thickness: 1
+
+  # Inner circle (center point)
+  - type: circle
+    center: [32, 36]
+    radius: 2
+    color: "#FFFFFF"
+    filled: true
+
+  # Cardinal direction markers (N, E, S, W)
+  - type: text
+    x: 32
+    y: 14
+    align: center
+    text: "N"
+    color: "#FF0000" # Red for North
+
+  - type: text
+    x: 54
+    y: 34
+    align: center
+    text: "E"
+    color: "#AAAAAA"
+
+  - type: text
+    x: 32
+    y: 54
+    align: center
+    text: "S"
+    color: "#AAAAAA"
+
+  - type: text
+    x: 10
+    y: 34
+    align: center
+    text: "W"
+    color: "#AAAAAA"
+
+  # Crosshair lines for axis
+  - type: line
+    start: [32, 14]
+    end: [32, 24]
+    color: "#444466"
+    thickness: 1
+
+  - type: line
+    start: [32, 48]
+    end: [32, 58]
+    color: "#444466"
+    thickness: 1
+
+  - type: line
+    start: [10, 36]
+    end: [20, 36]
+    color: "#444466"
+    thickness: 1
+
+  - type: line
+    start: [44, 36]
+    end: [54, 36]
+    color: "#444466"
+    thickness: 1
+
+  # ══════════════════════════════════════════════════════
+  # Direction Arrow (dynamic)
+  # ══════════════════════════════════════════════════════
+
+  # Main direction arrow
+  - type: arrow
+    center: [32, 36]
+    length: 18
+    angle: "{{ direction }}"
+    color: "#00FF00"
+    thickness: 2
+    head_size: 4
+
+  # Direction angle text (below compass)
+  - type: text
+    x: 32
+    y: 60
+    align: center
+    text: "{{ direction | int }}°"
+    color: "#00FF00"
+
+  # ══════════════════════════════════════════════════════
+  # Value Gauge (optional arc indicator)
+  # ══════════════════════════════════════════════════════
+
+  # Background arc (bottom left, 180° to 270°)
+  - type: arc
+    center: [12, 12]
+    radius: 10
+    start_angle: 180
+    end_angle: 270
+    color: "#333333"
+    thickness: 2
+    filled: false
+
+  # Value arc (dynamic based on value 0-100 mapped to 180-270°)
+  - type: arc
+    center: [12, 12]
+    radius: 10
+    start_angle: 180
+    end_angle: "{{ 180 + (value / 100 * 90) if value <= 100 else 270 }}"
+    color: "#FFAA00"
+    thickness: 2
+    filled: false
+    value: "{{ value }}"
+    color_thresholds:
+      - value: 30
+        color: "#00FF00"
+      - value: 60
+        color: "#FFAA00"
+      - value: 100
+        color: "#FF0000"
+
+  # Value text (top left)
+  - type: text
+    x: 2
+    y: 2
+    text: "{{ value | round(1) }}"
+    color: "#FFAA00"
+
+  - type: text
+    x: 2
+    y: 8
+    text: "{{ value_unit }}"
+    color: "#666666"

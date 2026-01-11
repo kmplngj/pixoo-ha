@@ -1,0 +1,159 @@
+# UniFi Network Dashboard für Pixoo Page Engine
+# Zeigt WLAN/LAN Geräte-Anzahl, Netzwerkdurchsatz und Firmware Updates
+#
+# Benötigte Sensoren (UniFi Integration):
+#   - sensor.<access_point>_wlan_clients (z.B. sensor.u6_pro_wlan_clients)
+#   - device_tracker.* (für LAN Geräte-Zählung)
+#   - update.*_firmware (für Firmware Update Status)
+#   - sensor.<gateway>_rx / sensor.<gateway>_tx (optional: Durchsatz)
+#
+# Anpassung:
+#   - Ändere die Sensor-Namen entsprechend deiner UniFi-Geräte
+#   - Für WLAN Clients: Summiere alle Access Point WLAN Client Sensoren
+#   - Für LAN Clients: Verwende device_tracker mit source_type: router
+
+- name: unifi_network_dashboard
+  page_type: components
+  duration: 15
+  background: "#000000"
+  variables:
+    # ─────────────────────────────────────────────────────────────
+    # WLAN und LAN Geräte-Zählung
+    # ─────────────────────────────────────────────────────────────
+    # WLAN Clients: Summiere alle Access Point WLAN Client Sensoren
+    # ANPASSEN: Ersetze mit deinen Access Point Sensor-Namen
+    wlan_clients: "{{ states('sensor.u6_pro_wlan_clients') | int(0) + states('sensor.u6_mesh_wlan_clients') | int(0) }}"
+
+    # LAN Clients: Zähle alle device_tracker die "home" sind und über UniFi verbunden
+    # Alternativ: Nutze einen dedizierten Sensor wenn verfügbar
+    lan_clients: "{{ states.device_tracker | selectattr('state', 'eq', 'home') | selectattr('attributes.source_type', 'defined') | selectattr('attributes.source_type', 'eq', 'router') | list | count }}"
+
+    # Gesamte verbundene Clients
+    total_clients: "{{ wlan_clients | int + lan_clients | int }}"
+
+    # ─────────────────────────────────────────────────────────────
+    # Firmware Updates
+    # ─────────────────────────────────────────────────────────────
+    # Zählt alle UniFi Update-Entities die "on" sind (= Update verfügbar)
+    updates_available: "{{ states.update | selectattr('state', 'eq', 'on') | selectattr('entity_id', 'search', 'unifi') | list | count }}"
+    update_color: "{{ '#FF8800' if updates_available | int > 0 else '#00AA00' }}"
+    update_icon: "{{ 'mdi:update' if updates_available | int > 0 else 'mdi:check-circle' }}"
+
+    # ─────────────────────────────────────────────────────────────
+    # Netzwerkdurchsatz (optional)
+    # ─────────────────────────────────────────────────────────────
+    # ANPASSEN: Ersetze mit deinen Gateway/Router Sensor-Namen
+    # Typische Namen: sensor.udm_pro_rx, sensor.usg_wan_rx, etc.
+    rx_rate: "{{ states('sensor.udm_pro_rx') | float(0) | round(1) }}"
+    tx_rate: "{{ states('sensor.udm_pro_tx') | float(0) | round(1) }}"
+
+    # ─────────────────────────────────────────────────────────────
+    # Farben
+    # ─────────────────────────────────────────────────────────────
+    wifi_color: "#2196F3" # Material Blue
+    lan_color: "#4CAF50" # Material Green
+
+  components:
+    # ═════════════════════════════════════════════════════════════
+    # Header Zeile
+    # ═════════════════════════════════════════════════════════════
+
+    # UniFi Netzwerk Icon (oben links)
+    - type: icon
+      icon: mdi:access-point-network
+      x: 4
+      y: 2
+      size: 16
+      color: "#0099FF"
+
+    # Titel
+    - type: text
+      x: 22
+      y: 4
+      text: "UniFi"
+      color: "#FFFFFF"
+      align: left
+
+    # Update Status Icon (oben rechts)
+    # Zeigt Update-Icon wenn Updates verfügbar, sonst Check-Icon
+    - type: icon
+      icon: "{{ update_icon }}"
+      x: 44
+      y: 2
+      size: 16
+      color: "{{ update_color }}"
+
+    # ═════════════════════════════════════════════════════════════
+    # WLAN Geräte Zeile
+    # ═════════════════════════════════════════════════════════════
+    - type: icon
+      icon: mdi:wifi
+      x: 4
+      y: 20
+      size: 12
+      color: "{{ wifi_color }}"
+
+    - type: text
+      x: 18
+      y: 21
+      text: "{{ wlan_clients }}"
+      color: "{{ wifi_color }}"
+
+    - type: text
+      x: 30
+      y: 21
+      text: "WLAN"
+      color: "#888888"
+
+    # ═════════════════════════════════════════════════════════════
+    # LAN Geräte Zeile
+    # ═════════════════════════════════════════════════════════════
+    - type: icon
+      icon: mdi:ethernet
+      x: 4
+      y: 34
+      size: 12
+      color: "{{ lan_color }}"
+
+    - type: text
+      x: 18
+      y: 35
+      text: "{{ lan_clients }}"
+      color: "{{ lan_color }}"
+
+    - type: text
+      x: 30
+      y: 35
+      text: "LAN"
+      color: "#888888"
+
+    # ═════════════════════════════════════════════════════════════
+    # Netzwerkdurchsatz (unten)
+    # ═════════════════════════════════════════════════════════════
+    # Download (RX)
+    - type: icon
+      icon: mdi:arrow-down
+      x: 4
+      y: 50
+      size: 10
+      color: "#00CC00"
+
+    - type: text
+      x: 14
+      y: 51
+      text: "{{ rx_rate }}"
+      color: "#00CC00"
+
+    # Upload (TX)
+    - type: icon
+      icon: mdi:arrow-up
+      x: 36
+      y: 50
+      size: 10
+      color: "#FF6600"
+
+    - type: text
+      x: 46
+      y: 51
+      text: "{{ tx_rate }}"
+      color: "#FF6600"

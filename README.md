@@ -18,12 +18,6 @@ Transform your Pixoo into a powerful smart display:
 - 🎨 **Custom Animations** - Upload your own pixel art and GIFs
 - 📱 **iOS Shortcuts** - Send photos directly from iPhone/iPad
 
-## 🆚 Vergleich mit `pixoo-homeassistant`
-
-Falls du dich fragst, was die (HACS Default) Integration `pixoo-homeassistant` im Vergleich zu `pixoo-ha` „mehr/besser“ macht (und umgekehrt):
-
-- Siehe [`PIXOO_HOMEASSISTANT_COMPARISON.md`](PIXOO_HOMEASSISTANT_COMPARISON.md)
-
 ## 🎯 Features
 
 ### Device Control
@@ -135,6 +129,226 @@ If automatic discovery doesn't work:
 ## 📋 Available Services
 
 The integration provides 25+ services for controlling your Pixoo device. All services require targeting a light entity (e.g., `light.pixoo_display`).
+
+### Page Engine (Pages, Rotation, Messages)
+
+The Page Engine lets you render structured “pages” (text/rectangles/images) and optionally rotate through a list of pages.
+
+**Getting Started with Page Rotation:**
+
+1. Create a `pixoo_pages.yaml` file in your Home Assistant config directory
+2. Configure the integration to use it (Settings → Devices & Services → Pixoo → Configure)
+3. Set `pages_yaml_path` to `pixoo_pages.yaml` and enable rotation
+4. See [`examples/page_templates/`](examples/page_templates/) for ready-to-use templates
+
+> **Note:** Rotation prefers your YAML pages file when `pages_yaml_path` is configured. If no YAML pages are available, rotation falls back to pages stored in the integration options (if any). There are no built-in default pages.
+
+**Services**:
+
+- `pixoo.render_page`: render a single page (full render: clear/fill → draw → push)
+- `pixoo.render_page_by_name`: render a specific named page from your YAML file
+- `pixoo.show_message`: temporary override page (last-wins), then resume rotation (if it was running)
+- `pixoo.rotation_enable`: enable/disable rotation
+- `pixoo.rotation_next`: advance to next active page
+- `pixoo.rotation_reload_pages`: reload YAML-defined pages (if configured)
+- `pixoo.set_rotation_config`: configure rotation settings (YAML path, duration, allowlist mode)
+
+**Page Types**:
+
+- `components`: Draw text, rectangles, images, progress bars, and graphs at specific positions
+- `template`: Jinja2 template that renders to a components page
+- `channel`: Switch to a native Pixoo channel (clock, visualizer, cloud, custom)
+
+**Component Types**:
+
+- `text`: Render text with color and alignment
+- `rectangle`: Draw filled or outlined rectangles
+- `image`: Display images from URL, path, or base64
+- `progress_bar`: Horizontal/vertical progress bar with threshold-based coloring
+- `graph`: Line/bar/area graph displaying entity history with color thresholds
+- `icon`: MDI icon with dynamic size and color (requires `cairosvg` for SVG rendering)
+
+All components support an optional `enabled` field (boolean or Jinja2 template) for conditional visibility.
+
+**Security note**: image `url`/`path` sources are allowlisted by Home Assistant in `allowlist_mode: strict` (default). Use `permissive` only if you understand the risk.
+
+Example: render a page with a text component
+
+```yaml
+service: pixoo.render_page
+target:
+  entity_id: light.pixoo_display
+data:
+  page:
+    page_type: components
+    background: "#000000"
+    components:
+      - type: text
+        x: 0
+        y: 0
+        text: "Hallo!"
+        color: "#00FF00"
+```
+
+Example: show a message for 10 seconds
+
+```yaml
+service: pixoo.show_message
+target:
+  entity_id: light.pixoo_display
+data:
+  duration: 10
+  page:
+    page_type: components
+    components:
+      - type: text
+        x: 0
+        y: 0
+        text: "Tür offen"
+        color: "red"
+```
+
+Example: enable rotation (configured via entry options) and skip to next page
+
+```yaml
+service: pixoo.rotation_enable
+target:
+  entity_id: light.pixoo_display
+data:
+  enabled: true
+
+---
+
+service: pixoo.rotation_next
+target:
+  entity_id: light.pixoo_display
+```
+
+Example: configure rotation with YAML pages file
+
+```yaml
+service: pixoo.set_rotation_config
+target:
+  entity_id: light.pixoo_display
+data:
+  enabled: true
+  default_duration: 10
+  pages_yaml_path: "/config/pixoo_pages.yaml"
+  allowlist_mode: permissive
+```
+
+Example: display native Pixoo clock channel
+
+```yaml
+service: pixoo.render_page
+target:
+  entity_id: light.pixoo_display
+data:
+  page:
+    page_type: channel
+    channel_name: clock
+    clock_id: 182  # Optional: specific clock face
+```
+
+### Progress Bar with Color Thresholds
+
+```yaml
+service: pixoo.render_page
+target:
+  entity_id: light.pixoo_display
+data:
+  page:
+    page_type: components
+    background: "#111111"
+    components:
+      - type: text
+        x: 0
+        y: 0
+        text: "Battery"
+      - type: progress_bar
+        x: 0
+        y: 10
+        width: 64
+        height: 8
+        progress: sensor.battery_soc  # Entity ID or template
+        color_thresholds:
+          - value: 80
+            color: "#00FF00"  # Green above 80%
+          - value: 50
+            color: "#FFFF00"  # Yellow 50-80%
+          - value: 20
+            color: "#FF0000"  # Red below 20%
+        color_thresholds_transition: smooth  # or "hard" for step changes
+```
+
+### MDI Icon with Threshold Coloring
+
+Display Material Design Icons with dynamic colors based on sensor values:
+
+```yaml
+service: pixoo.render_page
+target:
+  entity_id: light.pixoo_display
+data:
+  page:
+    page_type: components
+    background: "#000000"
+    components:
+      - type: icon
+        x: 24
+        y: 16
+        icon: "mdi:battery"  # Or just "battery"
+        size: 32  # 8, 16, 24, or 32 pixels
+        value: sensor.battery_soc
+        color_thresholds:
+          - value: 80
+            color: green
+          - value: 50
+            color: yellow
+          - value: 20
+            color: red
+      - type: text
+        x: 32
+        y: 52
+        text: "{{ states('sensor.battery_soc') }}%"
+        color: white
+        align: center
+```
+
+**Note**: Icon rendering requires `cairosvg`. Install with:
+```bash
+pip install cairosvg
+```
+
+### Conditional Component Visibility
+
+Components can be shown/hidden based on entity states using the `enabled` field:
+
+```yaml
+service: pixoo.render_page
+target:
+  entity_id: light.pixoo_display
+data:
+  page:
+    page_type: components
+    background: "#000000"
+    components:
+      # Only show when binary sensor is on
+      - type: icon
+        x: 0
+        y: 0
+        icon: mdi:alert
+        size: 16
+        color: red
+        enabled: "{{ is_state('binary_sensor.alarm', 'on') }}"
+      
+      # Always hidden (useful for testing)
+      - type: text
+        x: 0
+        y: 20
+        text: "Debug"
+        enabled: false
+```
 
 ### Display Services
 

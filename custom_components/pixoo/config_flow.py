@@ -5,13 +5,13 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from aiohttp import ClientTimeout
 from .pixooasync import PixooAsync
 import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_NAME
 from homeassistant.core import HomeAssistant
-from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
@@ -92,7 +92,7 @@ class PixooConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> config_entries.ConfigFlowResult:
         """First step: choose discovery mode."""
         if user_input is not None:
             mode = user_input["mode"]
@@ -102,9 +102,19 @@ class PixooConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore
 
         return self.async_show_form(step_id="user", data_schema=STEP_MODE_SCHEMA)
 
+    async def async_step_ssdp(
+        self, discovery_info: Any
+    ) -> config_entries.ConfigFlowResult:  # type: ignore[override]
+        """Handle SSDP discovery.
+
+        Pixoo devices do not provide reliable SSDP discovery. We use either manual
+        IP entry or the Divoom cloud API scan.
+        """
+        return self.async_abort(reason="ssdp_not_supported")
+
     async def async_step_manual(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> config_entries.ConfigFlowResult:
         """Manual IP entry step."""
         errors: dict[str, str] = {}
         if user_input is not None:
@@ -133,7 +143,9 @@ class PixooConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore
     # Note: Pixoo devices do not support SSDP discovery.
     # Discovery is handled via the Divoom cloud API.
 
-    async def async_step_scan(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_scan(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
         """Discover Pixoo devices via Divoom cloud API."""
         errors: dict[str, str] = {}
         
@@ -167,7 +179,7 @@ class PixooConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore
             # Use POST request to Divoom cloud API (not GET!)
             resp = await session.post(
                 "https://app.divoom-gz.com/Device/ReturnSameLANDevice",
-                timeout=10,
+                timeout=ClientTimeout(total=10),
             )
             _LOGGER.debug("Cloud API response status: %d", resp.status)
             result = await resp.json(content_type=None)
@@ -230,13 +242,13 @@ class PixooConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore
 
     async def async_step_reauth(
         self, entry_data: dict[str, Any]
-    ) -> FlowResult:
+    ) -> config_entries.ConfigFlowResult:
         """Handle reauth when device IP changes."""
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> config_entries.ConfigFlowResult:
         """Confirm reauth with new IP address."""
         errors: dict[str, str] = {}
 
@@ -250,9 +262,11 @@ class PixooConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore
                 errors["base"] = "cannot_connect"
             else:
                 # Update the existing entry with new IP
-                entry = self.hass.config_entries.async_get_entry(
-                    self.context["entry_id"]
-                )
+                entry_id = self.context.get("entry_id")
+                if not entry_id:
+                    return self.async_abort(reason="reauth_failed")
+
+                entry = self.hass.config_entries.async_get_entry(entry_id)
                 if entry:
                     self.hass.config_entries.async_update_entry(
                         entry,

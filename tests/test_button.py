@@ -20,10 +20,10 @@ async def test_button_entities_created(hass: HomeAssistant, config_entry, mock_p
         await hass.async_block_till_done()
     
     # Check that button entities exist
-    assert hass.states.get("button.pixoo_test_dismiss_notification") is not None
-    assert hass.states.get("button.pixoo_test_buzzer") is not None
-    assert hass.states.get("button.pixoo_test_reset_buffer") is not None
-    assert hass.states.get("button.pixoo_test_push_buffer") is not None
+    assert hass.states.get("button.test_pixoo_dismiss_notification") is not None
+    assert hass.states.get("button.test_pixoo_play_buzzer") is not None
+    assert hass.states.get("button.test_pixoo_reset_buffer") is not None
+    assert hass.states.get("button.test_pixoo_push_buffer") is not None
 
 
 async def test_dismiss_notification_button(
@@ -40,12 +40,12 @@ async def test_dismiss_notification_button(
     await hass.services.async_call(
         BUTTON_DOMAIN,
         SERVICE_PRESS,
-        {ATTR_ENTITY_ID: "button.pixoo_test_dismiss_notification"},
+        {ATTR_ENTITY_ID: "button.test_pixoo_dismiss_notification"},
         blocking=True,
     )
     
-    # For now, it should just call clear_display
-    mock_pixoo.clear_display.assert_called_once()
+    # For now, it clears scrolling text
+    mock_pixoo.clear_text.assert_awaited_once()
 
 
 async def test_buzzer_button(hass: HomeAssistant, config_entry, mock_pixoo) -> None:
@@ -60,12 +60,12 @@ async def test_buzzer_button(hass: HomeAssistant, config_entry, mock_pixoo) -> N
     await hass.services.async_call(
         BUTTON_DOMAIN,
         SERVICE_PRESS,
-        {ATTR_ENTITY_ID: "button.pixoo_test_buzzer"},
+        {ATTR_ENTITY_ID: "button.test_pixoo_play_buzzer"},
         blocking=True,
     )
     
     # Should call play_buzzer with default settings
-    mock_pixoo.play_buzzer.assert_called_once_with(active_ms=500, off_ms=500, count=1)
+    mock_pixoo.play_buzzer.assert_called_once_with(active_time=500, off_time=500, total_time=1000)
 
 
 async def test_reset_buffer_button(hass: HomeAssistant, config_entry, mock_pixoo) -> None:
@@ -80,11 +80,11 @@ async def test_reset_buffer_button(hass: HomeAssistant, config_entry, mock_pixoo
     await hass.services.async_call(
         BUTTON_DOMAIN,
         SERVICE_PRESS,
-        {ATTR_ENTITY_ID: "button.pixoo_test_reset_buffer"},
+        {ATTR_ENTITY_ID: "button.test_pixoo_reset_buffer"},
         blocking=True,
     )
     
-    mock_pixoo.reset_buffer.assert_called_once()
+    mock_pixoo.clear.assert_called_once()
 
 
 async def test_push_buffer_button(hass: HomeAssistant, config_entry, mock_pixoo) -> None:
@@ -99,11 +99,11 @@ async def test_push_buffer_button(hass: HomeAssistant, config_entry, mock_pixoo)
     await hass.services.async_call(
         BUTTON_DOMAIN,
         SERVICE_PRESS,
-        {ATTR_ENTITY_ID: "button.pixoo_test_push_buffer"},
+        {ATTR_ENTITY_ID: "button.test_pixoo_push_buffer"},
         blocking=True,
     )
     
-    mock_pixoo.push_buffer.assert_called_once()
+    mock_pixoo.push.assert_awaited_once()
 
 
 async def test_button_error_handling(hass: HomeAssistant, config_entry, mock_pixoo) -> None:
@@ -122,6 +122,6 @@ async def test_button_error_handling(hass: HomeAssistant, config_entry, mock_pix
         await hass.services.async_call(
             BUTTON_DOMAIN,
             SERVICE_PRESS,
-            {ATTR_ENTITY_ID: "button.pixoo_test_buzzer"},
+            {ATTR_ENTITY_ID: "button.test_pixoo_play_buzzer"},
             blocking=True,
         )
